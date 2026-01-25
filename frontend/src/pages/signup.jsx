@@ -1,6 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { User, Building2, ArrowRight, FileText, MapPin, Phone, Mail, Lock, Store as StoreIcon, CheckCircle2 } from "lucide-react";
 
 const Signup = () => {
@@ -93,7 +92,13 @@ const Signup = () => {
                 localStorage.setItem("role", data.role);
                 localStorage.setItem("user", JSON.stringify(data.user));
                 localStorage.setItem("isLoggedIn", "true");
-                navigate("/home");
+                localStorage.setItem("isLoggedIn", "true");
+
+                if (data.role === "store") {
+                    navigate("/owner-dashboard");
+                } else {
+                    navigate("/user-dashboard");
+                }
             } else {
                 setError(data.message || "Signup failed");
             }

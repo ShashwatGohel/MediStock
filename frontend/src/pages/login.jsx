@@ -31,7 +31,13 @@ const Login = () => {
         localStorage.setItem("role", data.role);
         localStorage.setItem("user", JSON.stringify(data.user));
         localStorage.setItem("isLoggedIn", "true");
-        navigate("/home");
+        localStorage.setItem("isLoggedIn", "true");
+
+        if (data.role === "store") {
+          navigate("/owner-dashboard");
+        } else {
+          navigate("/user-dashboard");
+        }
       } else {
         setError(data.message || "Login failed");
       }
