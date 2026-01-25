@@ -4,14 +4,28 @@ import {
     LayoutDashboard, Package, TrendingUp, AlertTriangle,
     Settings, LogOut, Moon, Sun, Search, Plus, FileText,
     Truck, DollarSign, Users, Eye, ShieldCheck, HelpCircle,
-    ChevronRight, ArrowUpRight, ArrowDownRight, Bell, Store, Clock
+    ChevronRight, ArrowUpRight, ArrowDownRight, Bell, Store, Clock,
+    Building2, Tag, Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import AddMedicineModal from "../components/AddMedicineModal";
+import CreateBillModal from "../components/CreateBillModal";
 
 const OwnerDashboard = () => {
     const navigate = useNavigate();
     const [storeStatus, setStoreStatus] = useState(true); // true = Open, false = Closed
     const [ownerName, setOwnerName] = useState("Partner");
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+    const [stockAlerts, setStockAlerts] = useState([]);
+    const [allMedicines, setAllMedicines] = useState([]);
+    const [filteredMedicines, setFilteredMedicines] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [stats, setStats] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [medicinesLoading, setMedicinesLoading] = useState(true);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [error, setError] = useState("");
 
     useEffect(() => {
         try {
@@ -26,31 +40,217 @@ const OwnerDashboard = () => {
         } catch (error) {
             console.error("Error parsing user data:", error);
         }
+
+        // Fetch low-stock medicines, all medicines, and daily stats
+        fetchLowStockMedicines();
+        fetchAllMedicines();
+        fetchDailyStats();
     }, []);
+
+    const fetchLowStockMedicines = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem("token");
+
+            const response = await fetch("http://localhost:5000/api/medicines/low-stock?threshold=10", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Transform medicines to stock alerts format
+                const alerts = data.medicines.map(med => {
+                    let status, type;
+                    if (med.quantity === 0) {
+                        status = "Out of Stock";
+                        type = "critical";
+                    } else if (med.quantity <= 5) {
+                        status = `Low Stock (${med.quantity} left)`;
+                        type = "critical";
+                    } else {
+                        status = `Low Stock (${med.quantity} left)`;
+                        type = "warning";
+                    }
+
+                    return {
+                        id: med._id,
+                        name: med.name,
+                        status,
+                        type
+                    };
+                });
+                setStockAlerts(alerts);
+            } else {
+                setError(data.message || "Failed to fetch low stock medicines");
+            }
+        } catch (err) {
+            console.error("Error fetching low stock medicines:", err);
+            setError("Network error. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchAllMedicines = async () => {
+        try {
+            setMedicinesLoading(true);
+            const token = localStorage.getItem("token");
+
+            const response = await fetch("http://localhost:5000/api/medicines/my-medicines", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setAllMedicines(data.medicines);
+                setFilteredMedicines(data.medicines);
+            }
+        } catch (err) {
+            console.error("Error fetching medicines:", err);
+        } finally {
+            setMedicinesLoading(false);
+        }
+    };
+
+    const handleSearch = (e) => {
+        const query = e.target.value.toLowerCase();
+        setSearchQuery(query);
+
+        if (query === "") {
+            setFilteredMedicines(allMedicines);
+        } else {
+            const filtered = allMedicines.filter(med =>
+                med.name.toLowerCase().includes(query) ||
+                (med.brand && med.brand.toLowerCase().includes(query)) ||
+                (med.category && med.category.toLowerCase().includes(query))
+            );
+            setFilteredMedicines(filtered);
+        }
+    };
+
+    const fetchDailyStats = async () => {
+        try {
+            setStatsLoading(true);
+            const token = localStorage.getItem("token");
+
+            const response = await fetch("http://localhost:5000/api/bills/daily-stats", {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                const { totalSales, salesChange, ordersToday, ordersChange, lowStockCount, profileVisits, visitsChange } = data.stats;
+
+                setStats([
+                    {
+                        title: "Total Sales",
+                        value: `₹${totalSales.toLocaleString()}`,
+                        change: `${salesChange >= 0 ? '+' : ''}${salesChange}%`,
+                        isPositive: salesChange >= 0,
+                        icon: DollarSign,
+                        color: "text-emerald-400",
+                        bg: "bg-emerald-500/10"
+                    },
+                    {
+                        title: "Orders Today",
+                        value: ordersToday.toString(),
+                        change: `${ordersChange >= 0 ? '+' : ''}${ordersChange}%`,
+                        isPositive: ordersChange >= 0,
+                        icon: Package,
+                        color: "text-blue-400",
+                        bg: "bg-blue-500/10"
+                    },
+                    {
+                        title: "Low Stock",
+                        value: `${lowStockCount} Items`,
+                        change: lowStockCount > 0 ? "Urgent" : "Good",
+                        isPositive: lowStockCount === 0,
+                        icon: AlertTriangle,
+                        color: "text-red-400",
+                        bg: "bg-red-500/10"
+                    },
+                    {
+                        title: "Profile Visits",
+                        value: profileVisits.toLocaleString(),
+                        change: `${visitsChange >= 0 ? '+' : ''}${visitsChange}%`,
+                        isPositive: visitsChange >= 0,
+                        icon: Eye,
+                        color: "text-purple-400",
+                        bg: "bg-purple-500/10"
+                    },
+                ]);
+            }
+        } catch (err) {
+            console.error("Error fetching daily stats:", err);
+        } finally {
+            setStatsLoading(false);
+        }
+    };
+
+    const handleMedicineAdded = () => {
+        // Refresh both low-stock medicines and all medicines after adding
+        fetchLowStockMedicines();
+        fetchAllMedicines();
+        fetchDailyStats();
+    };
+
+    const handleBillCreated = () => {
+        // Refresh everything after creating a bill
+        fetchLowStockMedicines();
+        fetchAllMedicines();
+        fetchDailyStats();
+    };
+
+    const handleDeleteMedicine = async (medicineId, medicineName) => {
+        if (!window.confirm(`Are you sure you want to delete "${medicineName}"?`)) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem("token");
+
+            const response = await fetch(`http://localhost:5000/api/medicines/delete/${medicineId}`, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Refresh all data
+                fetchLowStockMedicines();
+                fetchAllMedicines();
+                fetchDailyStats();
+            } else {
+                alert(data.message || "Failed to delete medicine");
+            }
+        } catch (err) {
+            console.error("Error deleting medicine:", err);
+            alert("Network error. Please try again.");
+        }
+    };
 
     const handleLogout = () => {
         localStorage.clear();
         navigate("/login");
     };
 
-    const stats = [
-        { title: "Total Sales", value: "₹24,500", change: "+12%", isPositive: true, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-        { title: "Orders Today", value: "45", change: "-5%", isPositive: false, icon: Package, color: "text-blue-400", bg: "bg-blue-500/10" },
-        { title: "Low Stock", value: "8 Items", change: "Urgent", isPositive: false, icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10" },
-        { title: "Profile Visits", value: "1,200", change: "+25%", isPositive: true, icon: Eye, color: "text-purple-400", bg: "bg-purple-500/10" },
-    ];
 
-    const stockAlerts = [
-        { id: 1, name: "Paracetamol 500mg", status: "Out of Stock", type: "critical" },
-        { id: 2, name: "Cetirizine 10mg", status: "Low Stock (5 left)", type: "warning" },
-        { id: 3, name: "Insulin Glargine", status: "Expires in 2 days", type: "warning" },
-    ];
 
-    const trendingSearches = [
-        { name: "Dolo 650", count: 450, trend: "up" },
-        { name: "Azithromycin", count: 320, trend: "up" },
-        { name: "ORS Packets", count: 210, trend: "stable" },
-    ];
+
+
+
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-['Outfit'] selection:bg-indigo-500/30 overflow-x-hidden relative">
@@ -102,12 +302,21 @@ const OwnerDashboard = () => {
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                         <h1 className="text-3xl sm:text-4xl font-bold text-white">
-                            Good Morning, {ownerName ? ownerName.split(" ")[0] : "Partner"} ☀️
+                            Good Morning, {ownerName ? ownerName.split(" ")[0] : "Partner"}
                         </h1>
                         <p className="text-gray-400 mt-1">Here's what's happening in your pharmacy today.</p>
                     </div>
                     <div className="flex gap-3">
-                        <button className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-semibold shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2">
+                        <button
+                            onClick={() => setIsBillModalOpen(true)}
+                            className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold shadow-lg shadow-green-500/20 transition-all flex items-center gap-2"
+                        >
+                            <FileText className="w-4 h-4" /> Create Bill
+                        </button>
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-semibold shadow-lg shadow-indigo-500/20 transition-all flex items-center gap-2"
+                        >
                             <Plus className="w-4 h-4" /> Add Medicines
                         </button>
                     </div>
@@ -120,20 +329,27 @@ const OwnerDashboard = () => {
                     transition={{ delay: 0.1 }}
                     className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
                 >
-                    {stats.map((stat, idx) => (
-                        <div key={idx} className="bg-[#121212] border border-white/5 p-5 rounded-2xl hover:border-white/10 transition-colors group">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                                    <stat.icon className="w-6 h-6" />
-                                </div>
-                                <span className={`flex items-center text-xs font-bold px-2 py-1 rounded bg-white/5 ${stat.isPositive ? "text-green-400" : "text-red-400"}`}>
-                                    {stat.change} {stat.isPositive ? <ArrowUpRight className="w-3 h-3 ml-1" /> : <ArrowDownRight className="w-3 h-3 ml-1" />}
-                                </span>
-                            </div>
-                            <h3 className="text-gray-400 text-sm font-medium">{stat.title}</h3>
-                            <p className="text-2xl font-bold text-white mt-1 group-hover:scale-105 transition-transform origin-left">{stat.value}</p>
+                    {statsLoading ? (
+                        <div className="col-span-4 text-center py-8 text-gray-400">
+                            <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                            Loading stats...
                         </div>
-                    ))}
+                    ) : (
+                        stats.map((stat, idx) => (
+                            <div key={idx} className="bg-[#121212] border border-white/5 p-5 rounded-2xl hover:border-white/10 transition-colors group">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
+                                        <stat.icon className="w-6 h-6" />
+                                    </div>
+                                    <span className={`flex items-center text-xs font-bold px-2 py-1 rounded bg-white/5 ${stat.isPositive ? "text-green-400" : "text-red-400"}`}>
+                                        {stat.change} {stat.isPositive ? <ArrowUpRight className="w-3 h-3 ml-1" /> : <ArrowDownRight className="w-3 h-3 ml-1" />}
+                                    </span>
+                                </div>
+                                <h3 className="text-gray-400 text-sm font-medium">{stat.title}</h3>
+                                <p className="text-2xl font-bold text-white mt-1 group-hover:scale-105 transition-transform origin-left">{stat.value}</p>
+                            </div>
+                        )))
+                    }
                 </motion.div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -158,7 +374,9 @@ const OwnerDashboard = () => {
                                 <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-500" />
                                 <input
                                     type="text"
-                                    placeholder="Search inventory to update stock or price..."
+                                    value={searchQuery}
+                                    onChange={handleSearch}
+                                    placeholder="Search medicines by name, brand, or category..."
                                     className="w-full bg-black/40 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500/50 transition-all placeholder:text-gray-600"
                                 />
                             </div>
@@ -177,29 +395,90 @@ const OwnerDashboard = () => {
                             </div>
                         </div>
 
-                        {/* 📈 Search Demand Insights */}
-                        <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-white/5 rounded-2xl p-6 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <TrendingUp className="w-32 h-32 text-indigo-500" />
+                        {/*  All Medicines Inventory */}
+                        <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Package className="w-5 h-5 text-indigo-400" /> Your Inventory
+                                </h2>
+                                <span className="text-sm text-gray-400">
+                                    {filteredMedicines.length} {filteredMedicines.length === 1 ? 'medicine' : 'medicines'}
+                                </span>
                             </div>
-                            <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2 relative z-10">
-                                <TrendingUp className="w-5 h-5 text-indigo-400" /> Market Insights
-                            </h2>
-                            <p className="text-sm text-gray-400 mb-6 relative z-10">Real-time demand in your area (5km radius)</p>
 
-                            <div className="space-y-4 relative z-10">
-                                {trendingSearches.map((item, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-lg font-bold text-gray-500 w-6">#{idx + 1}</span>
-                                            <span className="font-semibold text-white">{item.name}</span>
-                                        </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-sm text-gray-400">{item.count} searches</span>
-                                            <ArrowUpRight className="w-4 h-4 text-green-400" />
-                                        </div>
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto custom-scrollbar">
+                                {medicinesLoading ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                                        Loading inventory...
                                     </div>
-                                ))}
+                                ) : filteredMedicines.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">
+                                            {searchQuery ? 'No medicines found matching your search' : 'No medicines in inventory yet'}
+                                        </p>
+                                        {!searchQuery && (
+                                            <button
+                                                onClick={() => setIsModalOpen(true)}
+                                                className="mt-3 text-indigo-400 hover:text-indigo-300 text-sm font-medium"
+                                            >
+                                                Add your first medicine
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    filteredMedicines.map((medicine) => (
+                                        <div
+                                            key={medicine._id}
+                                            className="p-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                                        >
+                                            <div className="flex items-start justify-between">
+                                                <div className="flex-1">
+                                                    <h4 className="text-sm font-semibold text-white group-hover:text-indigo-400 transition-colors">
+                                                        {medicine.name}
+                                                    </h4>
+                                                    <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                                                        {medicine.brand && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Building2 className="w-3 h-3" />
+                                                                {medicine.brand}
+                                                            </span>
+                                                        )}
+                                                        {medicine.category && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Tag className="w-3 h-3" />
+                                                                {medicine.category}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right ml-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-sm font-bold ${medicine.quantity === 0 ? 'text-red-400' :
+                                                            medicine.quantity <= 5 ? 'text-orange-400' :
+                                                                medicine.quantity <= 10 ? 'text-yellow-400' :
+                                                                    'text-green-400'
+                                                            }`}>
+                                                            {medicine.quantity}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">units</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 mt-1">
+                                                        ₹{medicine.price}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteMedicine(medicine._id, medicine.name)}
+                                                    className="ml-3 p-2 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                    title="Delete medicine"
+                                                >
+                                                    <Trash2 className="w-4 h-4 text-red-400 hover:text-red-300" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </div>
                     </motion.div>
@@ -218,20 +497,39 @@ const OwnerDashboard = () => {
                                 <Bell className="w-5 h-5 text-orange-400" /> Action Required
                             </h2>
                             <div className="space-y-3">
-                                {stockAlerts.map((alert) => (
-                                    <div key={alert.id} className="p-3 rounded-lg bg-white/5 border border-white/5 flex items-start gap-3">
-                                        <AlertTriangle className={`w-5 h-5 mt-0.5 ${alert.type === 'critical' ? 'text-red-500' : 'text-orange-400'}`} />
-                                        <div>
-                                            <h4 className="text-sm font-semibold text-white">{alert.name}</h4>
-                                            <p className={`text-xs mt-1 ${alert.type === 'critical' ? 'text-red-400' : 'text-orange-400'}`}>
-                                                {alert.status}
-                                            </p>
-                                        </div>
-                                        <button className="ml-auto text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition-colors">
-                                            Restock
-                                        </button>
+                                {loading ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <div className="animate-spin w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+                                        Loading...
                                     </div>
-                                ))}
+                                ) : error ? (
+                                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                                        {error}
+                                    </div>
+                                ) : stockAlerts.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-400">
+                                        <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">All medicines are well stocked! 🎉</p>
+                                    </div>
+                                ) : (
+                                    stockAlerts.map((alert) => (
+                                        <div key={alert.id} className="p-3 rounded-lg bg-white/5 border border-white/5 flex items-start gap-3">
+                                            <AlertTriangle className={`w-5 h-5 mt-0.5 ${alert.type === 'critical' ? 'text-red-500' : 'text-orange-400'}`} />
+                                            <div className="flex-1">
+                                                <h4 className="text-sm font-semibold text-white">{alert.name}</h4>
+                                                <p className={`text-xs mt-1 ${alert.type === 'critical' ? 'text-red-400' : 'text-orange-400'}`}>
+                                                    {alert.status}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsModalOpen(true)}
+                                                className="ml-auto text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition-colors"
+                                            >
+                                                Restock
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         </motion.div>
 
@@ -286,6 +584,20 @@ const OwnerDashboard = () => {
                 </div>
 
             </div>
+
+            {/* Add Medicine Modal */}
+            <AddMedicineModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={handleMedicineAdded}
+            />
+
+            {/* Create Bill Modal */}
+            <CreateBillModal
+                isOpen={isBillModalOpen}
+                onClose={() => setIsBillModalOpen(false)}
+                onSuccess={handleBillCreated}
+            />
 
         </div>
     );

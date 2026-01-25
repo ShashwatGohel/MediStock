@@ -1,13 +1,19 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const dotenv = require("dotenv");
+import express from "express";
+import cors from "cors";
+import path from "path";
+import dotenv from "dotenv";
+import { fileURLToPath } from "url";
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import medicineRoutes from "./routes/medicineRoutes.js";
+import billRoutes from "./routes/billRoutes.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config({
   path: path.resolve(__dirname, "../.env"),
 });
-
-const connectDB = require("./config/db");
 
 const app = express();
 
@@ -17,8 +23,10 @@ app.use(express.json());
 // connect database
 connectDB();
 
-const authRoutes = require("./routes/authRoutes");
+// routes
 app.use("/api/auth", authRoutes);
+app.use("/api/medicines", medicineRoutes);
+app.use("/api/bills", billRoutes);
 
 // test route
 app.get("/", (req, res) => {
