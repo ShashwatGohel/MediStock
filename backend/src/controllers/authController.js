@@ -15,6 +15,8 @@ const signup = async (req, res) => {
       storeName,
       storeAddress,
       licenseNumber,
+      latitude,
+      longitude,
     } = req.body;
 
     // Basic validation
@@ -28,6 +30,11 @@ const signup = async (req, res) => {
           message: "Store details are required for store owner",
         });
       }
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          message: "Location is required for store owner",
+        });
+      }
     }
 
     // Check existing user
@@ -39,8 +46,8 @@ const signup = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
-    const user = await User.create({
+    // Create user data
+    const userData = {
       name,
       email,
       password: hashedPassword,
@@ -50,7 +57,20 @@ const signup = async (req, res) => {
       storeName: role === "store" ? storeName : undefined,
       storeAddress: role === "store" ? storeAddress : undefined,
       licenseNumber: role === "store" ? licenseNumber : undefined,
-    });
+    };
+
+    // Add location data for store owners
+    if (role === "store" && latitude && longitude) {
+      userData.latitude = parseFloat(latitude);
+      userData.longitude = parseFloat(longitude);
+      userData.location = {
+        type: "Point",
+        coordinates: [parseFloat(longitude), parseFloat(latitude)],
+      };
+    }
+
+    // Create user
+    const user = await User.create(userData);
 
     const token = jwt.sign(
       { id: user._id, role: user.role },

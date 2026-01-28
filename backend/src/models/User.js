@@ -30,9 +30,31 @@ const userSchema = new mongoose.Schema(
     storeName: String,
     storeAddress: String,
     licenseNumber: String,
+
+    // Geolocation for stores
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+      },
+      coordinates: [Number], // [longitude, latitude]
+    },
+    latitude: Number,
+    longitude: Number,
+    isStoreOpen: {
+      type: Boolean,
+      default: true,
+    },
+    operatingHours: {
+      type: String,
+      default: "9:00 AM - 9:00 PM",
+    },
   },
   { timestamps: true }
 );
+
+// Create geospatial index for location-based queries
+userSchema.index({ location: "2dsphere" });
 
 export default mongoose.model("User", userSchema);
 

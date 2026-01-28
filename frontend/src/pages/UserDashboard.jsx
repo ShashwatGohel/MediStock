@@ -4,9 +4,12 @@ import {
     Search, MapPin, Bell, User, History, Upload, FileText,
     Navigation, Filter, HeartPulse, ChevronRight, Star, Clock,
     AlertCircle, Phone, Activity, Sparkles, Thermometer, Pill,
-    Stethoscope, Smile, Dumbbell, Zap
+    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import RangeSlider from "../components/RangeSlider";
+import StoreCard from "../components/StoreCard";
+import { getCurrentLocation, saveLocation, getSavedLocation } from "../utils/locationUtils";
 
 const UserDashboard = () => {
     const navigate = useNavigate();
@@ -14,12 +17,82 @@ const UserDashboard = () => {
     const [user, setUser] = useState(null);
     const [showSOS, setShowSOS] = useState(false);
 
+    // Location and stores state
+    const [userLocation, setUserLocation] = useState(null);
+    const [searchRadius, setSearchRadius] = useState(5);
+    const [nearbyStores, setNearbyStores] = useState([]);
+    const [loadingLocation, setLoadingLocation] = useState(true);
+    const [loadingStores, setLoadingStores] = useState(false);
+    const [locationError, setLocationError] = useState("");
+
     useEffect(() => {
         const userData = localStorage.getItem("user");
         if (userData) {
             setUser(JSON.parse(userData));
         }
+
+        // Get user location
+        initializeLocation();
     }, []);
+
+    useEffect(() => {
+        // Fetch stores when location or radius changes
+        if (userLocation) {
+            fetchNearbyStores();
+        }
+    }, [userLocation, searchRadius]);
+
+    const initializeLocation = async () => {
+        try {
+            setLoadingLocation(true);
+            setLocationError("");
+
+            // Try to get saved location first
+            const saved = getSavedLocation();
+            if (saved && saved.latitude && saved.longitude) {
+                setUserLocation(saved);
+                setLoadingLocation(false);
+                return;
+            }
+
+            // Get current location
+            const location = await getCurrentLocation();
+            setUserLocation(location);
+            saveLocation(location.latitude, location.longitude);
+        } catch (error) {
+            console.error("Location error:", error);
+            setLocationError(error.message);
+            // Use default location (Mumbai) as fallback
+            const defaultLocation = { latitude: 19.0760, longitude: 72.8777 };
+            setUserLocation(defaultLocation);
+        } finally {
+            setLoadingLocation(false);
+        }
+    };
+
+    const fetchNearbyStores = async () => {
+        if (!userLocation) return;
+
+        try {
+            setLoadingStores(true);
+            const response = await fetch(
+                `http://localhost:5000/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
+            );
+            const data = await response.json();
+
+            if (data.success) {
+                setNearbyStores(data.stores);
+            } else {
+                console.error("Failed to fetch stores:", data.message);
+                setNearbyStores([]);
+            }
+        } catch (error) {
+            console.error("Error fetching nearby stores:", error);
+            setNearbyStores([]);
+        } finally {
+            setLoadingStores(false);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem("token");
@@ -29,11 +102,9 @@ const UserDashboard = () => {
         navigate("/login");
     };
 
-    const nearbyStores = [
-        { id: 1, name: "City Care Pharmacy", dist: "0.8 km", status: "Open", rating: 4.8 },
-        { id: 2, name: "Green Cross Meds", dist: "1.2 km", status: "Open", rating: 4.5 },
-        { id: 3, name: "Apollo Pharmacy", dist: "2.5 km", status: "Closes 10 PM", rating: 4.2 },
-    ];
+    const handleStoreClick = (storeId) => {
+        navigate(`/store/${storeId}`);
+    };
 
     const recentSearches = ["Dolo 650", "Azithromycin", "Vitamin C", "Cotton Bandage"];
 
@@ -98,8 +169,22 @@ const UserDashboard = () => {
                 >
                     <div>
                         <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium mb-1">
-                            <MapPin className="w-4 h-4" />
-                            <span>Mumbai, India</span>
+                            {loadingLocation ? (
+                                <>
+                                    <Loader className="w-4 h-4 animate-spin" />
+                                    <span>Getting your location...</span>
+                                </>
+                            ) : locationError ? (
+                                <>
+                                    <MapPinOff className="w-4 h-4" />
+                                    <span>Using default location</span>
+                                </>
+                            ) : (
+                                <>
+                                    <MapPin className="w-4 h-4" />
+                                    <span>Your Location</span>
+                                </>
+                            )}
                         </div>
                         <h1 className="text-3xl sm:text-4xl font-bold text-white">
                             Hello, {user ? user.name.split(" ")[0] : "User"} 👋
@@ -144,10 +229,29 @@ const UserDashboard = () => {
                         </div>
                         <span className="text-gray-500 hidden sm:inline">•</span>
                         <div className="text-gray-400">
-                            <span className="text-white font-semibold">45+</span> active pharmacies nearby
+                            <span className="text-white font-semibold">{nearbyStores.length}</span> active pharmacies nearby
                         </div>
                     </div>
                 </motion.div>
+
+                {/* Range Slider */}
+                {!loadingLocation && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15 }}
+                        className="bg-[#121212] border border-white/5 rounded-2xl p-6"
+                    >
+                        <RangeSlider
+                            value={searchRadius}
+                            onChange={setSearchRadius}
+                            min={1}
+                            max={50}
+                            unit="km"
+                        />
+                    </motion.div>
+                )}
+
 
                 {/* ✨ Promo Banner */}
                 <motion.div
@@ -248,33 +352,35 @@ const UserDashboard = () => {
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 Nearby Stores
                             </h2>
-                            <button className="text-xs font-semibold text-emerald-400 hover:text-emerald-300">
-                                View All
-                            </button>
+                            {nearbyStores.length > 0 && (
+                                <span className="text-xs font-semibold text-emerald-400">
+                                    {nearbyStores.length} found
+                                </span>
+                            )}
                         </div>
 
-                        <div className="space-y-3">
-                            {nearbyStores.map((store) => (
-                                <div
-                                    key={store.id}
-                                    className="group bg-[#121212] hover:bg-[#1a1a1a] border border-white/5 rounded-xl p-4 transition-all flex items-center justify-between cursor-pointer"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center text-gray-400 group-hover:bg-emerald-500/10 group-hover:text-emerald-500 transition-colors">
-                                            <MapPin className="w-5 h-5" />
-                                        </div>
-                                        <div>
-                                            <h3 className="font-bold text-gray-200 group-hover:text-emerald-400 transition-colors">{store.name}</h3>
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
-                                                <span className="flex items-center gap-1"><Navigation className="w-3 h-3" /> {store.dist}</span>
-                                                <span>•</span>
-                                                <span className="flex items-center gap-1 text-yellow-500"><Star className="w-3 h-3 fill-yellow-500" /> {store.rating}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" />
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto custom-scrollbar">
+                            {loadingStores ? (
+                                <div className="text-center py-12">
+                                    <Loader className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-2" />
+                                    <p className="text-gray-400 text-sm">Finding nearby stores...</p>
                                 </div>
-                            ))}
+                            ) : nearbyStores.length === 0 ? (
+                                <div className="text-center py-12">
+                                    <MapPinOff className="w-12 h-12 text-gray-600 mx-auto mb-4 opacity-50" />
+                                    <p className="text-gray-400 text-sm">No stores found in this area</p>
+                                    <p className="text-gray-500 text-xs mt-2">Try increasing your search radius</p>
+                                </div>
+                            ) : (
+                                nearbyStores.map((store, index) => (
+                                    <StoreCard
+                                        key={store.id}
+                                        store={store}
+                                        index={index}
+                                        onClick={() => handleStoreClick(store.id)}
+                                    />
+                                ))
+                            )}
                         </div>
                     </motion.div>
 
@@ -320,3 +426,5 @@ const UserDashboard = () => {
 };
 
 export default UserDashboard;
+
+

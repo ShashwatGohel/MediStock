@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    LayoutDashboard, Package, TrendingUp, AlertTriangle,
+    LayoutDashboard, Package, TrendingUp, AlertTriangle, MapPin,
     Settings, LogOut, Moon, Sun, Search, Plus, FileText,
     Truck, DollarSign, Users, Eye, ShieldCheck, HelpCircle,
     ChevronRight, ArrowUpRight, ArrowDownRight, Bell, Store, Clock,
@@ -10,10 +10,14 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import AddMedicineModal from "../components/AddMedicineModal";
 import CreateBillModal from "../components/CreateBillModal";
+import { getCurrentLocation } from "../utils/locationUtils";
 
 const OwnerDashboard = () => {
     const navigate = useNavigate();
-    const [storeStatus, setStoreStatus] = useState(true); // true = Open, false = Closed
+    const [storeStatus, setStoreStatus] = useState(true);
+    const [storeData, setStoreData] = useState(null);
+    const [locationLoading, setLocationLoading] = useState(false);
+    // true = Open, false = Closed
     const [ownerName, setOwnerName] = useState("Partner");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
@@ -27,25 +31,7 @@ const OwnerDashboard = () => {
     const [statsLoading, setStatsLoading] = useState(true);
     const [error, setError] = useState("");
 
-    useEffect(() => {
-        try {
-            // Fetch owner details from local storage or API
-            const storedUser = localStorage.getItem("user");
-            if (storedUser) {
-                const user = JSON.parse(storedUser);
-                if (user && user.name) {
-                    setOwnerName(user.name);
-                }
-            }
-        } catch (error) {
-            console.error("Error parsing user data:", error);
-        }
 
-        // Fetch low-stock medicines, all medicines, and daily stats
-        fetchLowStockMedicines();
-        fetchAllMedicines();
-        fetchDailyStats();
-    }, []);
 
     const fetchLowStockMedicines = async () => {
         try {
@@ -196,6 +182,62 @@ const OwnerDashboard = () => {
         }
     };
 
+    const fetchStoreProfile = async () => {
+        try {
+            const storedUser = JSON.parse(localStorage.getItem("user"));
+            if (!storedUser || !storedUser._id) return;
+
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:5000/api/stores/${storedUser._id}`, {
+                headers: {
+                    "Authorization": `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                setStoreData(data.store);
+            }
+        } catch (err) {
+            console.error("Error fetching store profile:", err);
+        }
+    };
+
+    const handleUpdateLocation = async () => {
+        try {
+            setLocationLoading(true);
+            const position = await getCurrentLocation();
+            const { latitude, longitude } = position;
+
+            const token = localStorage.getItem("token");
+            const response = await fetch("http://localhost:5000/api/stores/location", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    latitude,
+                    longitude
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                alert("Location updated successfully!");
+                fetchStoreProfile(); // Refresh profile
+            } else {
+                alert(data.message || "Failed to update location");
+            }
+        } catch (error) {
+            console.error("Error updating location:", error);
+            alert(error.message || "Failed to get location");
+        } finally {
+            setLocationLoading(false);
+        }
+    };
+
     const handleMedicineAdded = () => {
         // Refresh both low-stock medicines and all medicines after adding
         fetchLowStockMedicines();
@@ -252,6 +294,27 @@ const OwnerDashboard = () => {
 
 
 
+    useEffect(() => {
+        try {
+            // Fetch owner details from local storage or API
+            const storedUser = localStorage.getItem("user");
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                if (user && user.name) {
+                    setOwnerName(user.name);
+                }
+            }
+        } catch (error) {
+            console.error("Error parsing user data:", error);
+        }
+
+        // Fetch low-stock medicines, all medicines, and daily stats
+        fetchLowStockMedicines();
+        fetchAllMedicines();
+        fetchDailyStats();
+        fetchStoreProfile();
+    }, []);
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-['Outfit'] selection:bg-indigo-500/30 overflow-x-hidden relative">
 
@@ -302,9 +365,9 @@ const OwnerDashboard = () => {
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                         <h1 className="text-3xl sm:text-4xl font-bold text-white">
-                            Good Morning, {ownerName ? ownerName.split(" ")[0] : "Partner"}
+                            Welcome {ownerName ? ownerName.split(" ")[0] : "Partner"}
                         </h1>
-                        <p className="text-gray-400 mt-1">Here's what's happening in your pharmacy today.</p>
+                        <p className="text-gray-400 mt-1">Your Own Dashboard</p>
                     </div>
                     <div className="flex gap-3">
                         <button
@@ -531,6 +594,53 @@ const OwnerDashboard = () => {
                                     ))
                                 )}
                             </div>
+                        </motion.div>
+
+                        {/* 📍 Store Location */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.35 }}
+                            className="bg-[#121212] border border-white/5 rounded-2xl p-6"
+                        >
+                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <MapPin className="w-5 h-5 text-emerald-400" /> Store Location
+                            </h2>
+
+                            <div className="bg-white/5 rounded-xl p-4 mb-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-gray-400 text-sm">Coordinates</span>
+                                    {storeData?.location?.coordinates && (
+                                        <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">Live</span>
+                                    )}
+                                </div>
+                                <div className="font-mono text-sm text-gray-200">
+                                    {storeData?.location?.coordinates ? (
+                                        <>
+                                            {storeData.location.coordinates[1].toFixed(6)}, {storeData.location.coordinates[0].toFixed(6)}
+                                        </>
+                                    ) : (
+                                        <span className="text-gray-500">Location not set</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleUpdateLocation}
+                                disabled={locationLoading}
+                                className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {locationLoading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Updating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <MapPin className="w-4 h-4" /> Update Location
+                                    </>
+                                )}
+                            </button>
                         </motion.div>
 
                         {/* ⚡ Quick Actions */}

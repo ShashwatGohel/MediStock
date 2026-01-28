@@ -1,6 +1,8 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { User, Building2, ArrowRight, FileText, MapPin, Phone, Mail, Lock, Store as StoreIcon, CheckCircle2 } from "lucide-react";
+import { User, Building2, ArrowRight, FileText, MapPin, Phone, Mail, Lock, Store as StoreIcon, CheckCircle2, Loader, Navigation } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { getCurrentLocation } from "../utils/locationUtils";
 
 const Signup = () => {
     const navigate = useNavigate();
@@ -27,8 +29,13 @@ const Signup = () => {
         city: "",
         pincode: "",
         password: "",
-        confirmPassword: ""
+        confirmPassword: "",
+        latitude: "",
+        longitude: ""
     });
+
+    const [locationLoading, setLocationLoading] = useState(false);
+    const [locationError, setLocationError] = useState("");
 
     const handleUserChange = (e) => {
         setUserFormData({ ...userFormData, [e.target.name]: e.target.value });
@@ -39,6 +46,23 @@ const Signup = () => {
     };
 
     const [error, setError] = useState("");
+
+    const handleGetLocation = async () => {
+        try {
+            setLocationLoading(true);
+            setLocationError("");
+            const location = await getCurrentLocation();
+            setStoreFormData({
+                ...storeFormData,
+                latitude: location.latitude.toString(),
+                longitude: location.longitude.toString()
+            });
+        } catch (error) {
+            setLocationError(error.message);
+        } finally {
+            setLocationLoading(false);
+        }
+    };
 
     const handleSignup = async (e) => {
         e.preventDefault();
@@ -72,6 +96,8 @@ const Signup = () => {
                 licenseNumber: storeFormData.licenseNumber,
                 storeAddress: storeFormData.address,
                 city: storeFormData.city,
+                latitude: storeFormData.latitude,
+                longitude: storeFormData.longitude,
             };
         }
 
@@ -357,6 +383,72 @@ const Signup = () => {
                                                         type="text"
                                                         placeholder="Pincode"
                                                         value={storeFormData.pincode}
+                                                        onChange={handleStoreChange}
+                                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-gray-600"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Geolocation Section */}
+                                        <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                                            <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                                <Navigation className="w-3 h-3" /> Store Location
+                                            </h3>
+                                            <div className="space-y-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGetLocation}
+                                                    disabled={locationLoading}
+                                                    className="w-full py-3 bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 rounded-lg font-semibold text-indigo-400 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    {locationLoading ? (
+                                                        <>
+                                                            <Loader className="w-4 h-4 animate-spin" />
+                                                            Getting Location...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <MapPin className="w-4 h-4" />
+                                                            Get Current Location
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                                {locationError && (
+                                                    <p className="text-red-400 text-xs">{locationError}</p>
+                                                )}
+
+                                                {storeFormData.latitude && storeFormData.longitude && (
+                                                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                                                        <p className="text-green-400 text-xs font-semibold mb-1 flex items-center gap-1">
+                                                            <CheckCircle2 className="w-3 h-3" />
+                                                            Location Captured
+                                                        </p>
+                                                        <p className="text-gray-400 text-xs font-mono">
+                                                            {parseFloat(storeFormData.latitude).toFixed(6)}, {parseFloat(storeFormData.longitude).toFixed(6)}
+                                                        </p>
+                                                    </div>
+                                                )}
+
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <input
+                                                        name="latitude"
+                                                        type="number"
+                                                        step="any"
+                                                        placeholder="Latitude"
+                                                        value={storeFormData.latitude}
+                                                        onChange={handleStoreChange}
+                                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-gray-600"
+                                                        required
+                                                    />
+                                                    <input
+                                                        name="longitude"
+                                                        type="number"
+                                                        step="any"
+                                                        placeholder="Longitude"
+                                                        value={storeFormData.longitude}
                                                         onChange={handleStoreChange}
                                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-gray-600"
                                                         required

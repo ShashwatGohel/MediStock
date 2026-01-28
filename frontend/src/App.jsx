@@ -4,6 +4,7 @@ import Login from "./pages/login";
 import Signup from "./pages/signup";
 import UserDashboard from "./pages/UserDashboard";
 import OwnerDashboard from "./pages/OwnerDashboard";
+import StoreDetail from "./pages/StoreDetail";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/owner-dashboard" element={<OwnerDashboard />} />
+        <Route path="/store/:storeId" element={<StoreDetail />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
@@ -23,3 +25,5 @@ function App() {
 }
 
 export default App;
+
+
