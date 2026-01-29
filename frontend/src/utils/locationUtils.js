@@ -38,6 +38,24 @@ export const getCurrentLocation = () => {
     });
 };
 
+// Reverse geocode coordinates to address using Nominatim (OpenStreetMap)
+export const getAddressFromCoords = async (latitude, longitude) => {
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
+        );
+        const data = await response.json();
+
+        if (data && data.display_name) {
+            return data.display_name;
+        }
+        return "Address not found";
+    } catch (error) {
+        console.error("Error in reverse geocoding:", error);
+        return "Error retrieving address";
+    }
+};
+
 // Calculate distance between two coordinates using Haversine formula
 export const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371; // Radius of the Earth in km

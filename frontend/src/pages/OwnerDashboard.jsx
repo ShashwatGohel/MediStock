@@ -5,17 +5,36 @@ import {
     Settings, LogOut, Moon, Sun, Search, Plus, FileText,
     Truck, DollarSign, Users, Eye, ShieldCheck, HelpCircle,
     ChevronRight, ArrowUpRight, ArrowDownRight, Bell, Store, Clock,
-    Building2, Tag, Trash2
+    Building2, Tag, Trash2, Navigation, MapPinOff, Loader, Map
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AddMedicineModal from "../components/AddMedicineModal";
 import CreateBillModal from "../components/CreateBillModal";
-import { getCurrentLocation } from "../utils/locationUtils";
+import { getCurrentLocation, getAddressFromCoords } from "../utils/locationUtils";
+import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import { ownerIcon } from "../utils/MapMarkerIcons";
+
+// Helper component to update map view when location changes
+const RecenterMap = ({ position }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (position) {
+            map.setView([position.lat, position.lng], map.getZoom());
+        }
+    }, [position, map]);
+    return null;
+};
+
+// OpenStreetMap/Leaflet doesn't use the same style array as Google Maps
+// We use a dark tile layer instead to achieve the same look.
 
 const OwnerDashboard = () => {
     const navigate = useNavigate();
     const [storeStatus, setStoreStatus] = useState(true);
     const [storeData, setStoreData] = useState(null);
+    const [detectedLocation, setDetectedLocation] = useState(null);
+    const [detectionError, setDetectionError] = useState("");
     const [locationLoading, setLocationLoading] = useState(false);
     // true = Open, false = Closed
     const [ownerName, setOwnerName] = useState("Partner");
@@ -197,9 +216,25 @@ const OwnerDashboard = () => {
             const data = await response.json();
             if (response.ok && data.success) {
                 setStoreData(data.store);
+                // If address is missing, detect current location
+                if (!data.store?.address) {
+                    detectCurrentLocation();
+                }
             }
         } catch (err) {
             console.error("Error fetching store profile:", err);
+        }
+    };
+
+    const detectCurrentLocation = async () => {
+        try {
+            setDetectionError("");
+            const position = await getCurrentLocation();
+            const address = await getAddressFromCoords(position.latitude, position.longitude);
+            setDetectedLocation({ ...position, address });
+        } catch (error) {
+            console.error("Error detecting current location:", error);
+            setDetectionError(error.message || "Could not detect location automatically");
         }
     };
 
@@ -208,6 +243,8 @@ const OwnerDashboard = () => {
             setLocationLoading(true);
             const position = await getCurrentLocation();
             const { latitude, longitude } = position;
+
+            const address = await getAddressFromCoords(latitude, longitude);
 
             const token = localStorage.getItem("token");
             const response = await fetch("http://localhost:5000/api/stores/location", {
@@ -218,7 +255,8 @@ const OwnerDashboard = () => {
                 },
                 body: JSON.stringify({
                     latitude,
-                    longitude
+                    longitude,
+                    address
                 })
             });
 
@@ -596,51 +634,113 @@ const OwnerDashboard = () => {
                             </div>
                         </motion.div>
 
-                        {/* 📍 Store Location */}
+                        {/* 📍 Store Location & Live Map */}
                         <motion.div
                             initial={{ opacity: 0, x: 10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.35 }}
-                            className="bg-[#121212] border border-white/5 rounded-2xl p-6"
+                            className="bg-[#121212] border border-white/5 rounded-2xl overflow-hidden"
                         >
-                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <MapPin className="w-5 h-5 text-emerald-400" /> Store Location
-                            </h2>
+                            <div className="p-6 pb-0">
+                                <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                    <MapPin className="w-5 h-5 text-emerald-400" /> Store Location
+                                </h2>
 
-                            <div className="bg-white/5 rounded-xl p-4 mb-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-gray-400 text-sm">Coordinates</span>
-                                    {storeData?.location?.coordinates && (
-                                        <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">Live</span>
-                                    )}
-                                </div>
-                                <div className="font-mono text-sm text-gray-200">
-                                    {storeData?.location?.coordinates ? (
-                                        <>
-                                            {storeData.location.coordinates[1].toFixed(6)}, {storeData.location.coordinates[0].toFixed(6)}
-                                        </>
-                                    ) : (
-                                        <span className="text-gray-500">Location not set</span>
-                                    )}
+                                <div className="bg-white/5 rounded-xl p-4 mb-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-gray-400 text-sm">Store Address</span>
+                                        {(storeData?.latitude || detectedLocation?.latitude) && (
+                                            <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-1 rounded">Live</span>
+                                        )}
+                                    </div>
+                                    <div className="text-sm text-gray-200">
+                                        {storeData?.address ? (
+                                            <div className="space-y-2">
+                                                <p className="font-medium text-white line-clamp-2">{storeData.address}</p>
+                                                <div className="flex items-center gap-2 text-xs font-mono text-gray-500">
+                                                    <Navigation className="w-3 h-3" />
+                                                    {storeData.latitude.toFixed(6)}, {storeData.longitude.toFixed(6)}
+                                                </div>
+                                            </div>
+                                        ) : detectedLocation ? (
+                                            <div className="space-y-2 bg-indigo-500/5 p-3 rounded-lg border border-indigo-500/10">
+                                                <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                                                    Detected Current Location
+                                                </p>
+                                                <p className="font-medium text-white line-clamp-2">{detectedLocation.address}</p>
+                                                <div className="flex items-center gap-2 text-xs font-mono text-gray-500">
+                                                    <Navigation className="w-3 h-3" />
+                                                    {detectedLocation.latitude.toFixed(6)}, {detectedLocation.longitude.toFixed(6)}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center py-4 bg-white/5 rounded-lg border border-white/5">
+                                                <Loader className="w-6 h-6 text-indigo-500 mb-2 animate-spin" />
+                                                <span className="text-gray-500 italic text-center text-xs">Detecting current location...</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
-                            <button
-                                onClick={handleUpdateLocation}
-                                disabled={locationLoading}
-                                className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {locationLoading ? (
-                                    <>
-                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                        Updating...
-                                    </>
+                            {/* Live Leaflet Map */}
+                            <div className="w-full h-48 bg-black/20 border-y border-white/5 relative group">
+                                {(storeData?.latitude || detectedLocation?.latitude) ? (
+                                    <MapContainer
+                                        center={[
+                                            storeData?.latitude || detectedLocation?.latitude,
+                                            storeData?.longitude || detectedLocation?.longitude
+                                        ]}
+                                        zoom={15}
+                                        style={{ width: "100%", height: "100%", background: "#1a1a1a" }}
+                                        zoomControl={false}
+                                    >
+                                        <TileLayer
+                                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                        />
+                                        <RecenterMap
+                                            position={{
+                                                lat: storeData?.latitude || detectedLocation?.latitude,
+                                                lng: storeData?.longitude || detectedLocation?.longitude
+                                            }}
+                                        />
+                                        <Marker
+                                            position={[
+                                                storeData?.latitude || detectedLocation?.latitude,
+                                                storeData?.longitude || detectedLocation?.longitude
+                                            ]}
+                                            icon={ownerIcon}
+                                        />
+                                    </MapContainer>
                                 ) : (
-                                    <>
-                                        <MapPin className="w-4 h-4" /> Update Location
-                                    </>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1a1a1a]">
+                                        <Map className="w-10 h-10 text-gray-700 mb-2" />
+                                        <span className="text-xs text-gray-600">Map will appear once location is detected</span>
+                                    </div>
                                 )}
-                            </button>
+                                <div className="absolute inset-0 pointer-events-none border border-white/5 group-hover:border-indigo-500/20 transition-colors"></div>
+                            </div>
+
+                            <div className="p-6 pt-4">
+                                <button
+                                    onClick={handleUpdateLocation}
+                                    disabled={locationLoading}
+                                    className="w-full py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {locationLoading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <MapPin className="w-4 h-4" /> Save Store Location
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </motion.div>
 
                         {/* ⚡ Quick Actions */}

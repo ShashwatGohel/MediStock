@@ -287,8 +287,8 @@ const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
                                                 type="button"
                                                 onClick={() => setPaymentMethod(method)}
                                                 className={`px-4 py-3 rounded-lg font-medium text-sm transition-all ${paymentMethod === method
-                                                        ? "bg-indigo-500 text-white"
-                                                        : "bg-white/5 text-gray-400 hover:bg-white/10"
+                                                    ? "bg-indigo-500 text-white"
+                                                    : "bg-white/5 text-gray-400 hover:bg-white/10"
                                                     }`}
                                             >
                                                 {method.toUpperCase()}

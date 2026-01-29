@@ -9,16 +9,36 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import RangeSlider from "../components/RangeSlider";
 import StoreCard from "../components/StoreCard";
-import { getCurrentLocation, saveLocation, getSavedLocation } from "../utils/locationUtils";
+import { getCurrentLocation, saveLocation, getSavedLocation, getAddressFromCoords } from "../utils/locationUtils";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import { userIcon, storeIcon } from "../utils/MapMarkerIcons";
+
+// Helper component to update map view when location changes
+const RecenterMap = ({ position }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (position) {
+            map.setView([position.lat, position.lng], map.getZoom());
+        }
+    }, [position, map]);
+    return null;
+};
+
+// OpenStreetMap/Leaflet doesn't use the same style array as Google Maps
+// We use a dark tile layer instead to achieve the same look.
 
 const UserDashboard = () => {
     const navigate = useNavigate();
+    const [selectedStore, setSelectedStore] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [user, setUser] = useState(null);
     const [showSOS, setShowSOS] = useState(false);
 
     // Location and stores state
     const [userLocation, setUserLocation] = useState(null);
+    const [userAddress, setUserAddress] = useState("");
+    const [showMap, setShowMap] = useState(false);
     const [searchRadius, setSearchRadius] = useState(5);
     const [nearbyStores, setNearbyStores] = useState([]);
     const [loadingLocation, setLoadingLocation] = useState(true);
@@ -47,20 +67,28 @@ const UserDashboard = () => {
             setLoadingLocation(true);
             setLocationError("");
 
-            // Try to get saved location first
-            const saved = getSavedLocation();
-            if (saved && saved.latitude && saved.longitude) {
-                setUserLocation(saved);
-                setLoadingLocation(false);
-                return;
-            }
-
-            // Get current location
+            // Get current location first for freshness
             const location = await getCurrentLocation();
             setUserLocation(location);
             saveLocation(location.latitude, location.longitude);
+
+            // Get address for feedback
+            const address = await getAddressFromCoords(location.latitude, location.longitude);
+            setUserAddress(address);
         } catch (error) {
             console.error("Location error:", error);
+
+            // Fallback to saved location if current fails
+            const saved = getSavedLocation();
+            if (saved && saved.latitude && saved.longitude) {
+                // Check if saved location is not too old (e.g., 1 hour)
+                const oneHour = 60 * 60 * 1000;
+                if (Date.now() - (saved.timestamp || 0) < oneHour) {
+                    setUserLocation(saved);
+                    return;
+                }
+            }
+
             setLocationError(error.message);
             // Use default location (Mumbai) as fallback
             const defaultLocation = { latitude: 19.0760, longitude: 72.8777 };
@@ -69,7 +97,6 @@ const UserDashboard = () => {
             setLoadingLocation(false);
         }
     };
-
     const fetchNearbyStores = async () => {
         if (!userLocation) return;
 
@@ -182,7 +209,7 @@ const UserDashboard = () => {
                             ) : (
                                 <>
                                     <MapPin className="w-4 h-4" />
-                                    <span>Your Location</span>
+                                    <span className="truncate max-w-[200px] sm:max-w-md">{userAddress || "Your Location"}</span>
                                 </>
                             )}
                         </div>
@@ -235,22 +262,24 @@ const UserDashboard = () => {
                 </motion.div>
 
                 {/* Range Slider */}
-                {!loadingLocation && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15 }}
-                        className="bg-[#121212] border border-white/5 rounded-2xl p-6"
-                    >
-                        <RangeSlider
-                            value={searchRadius}
-                            onChange={setSearchRadius}
-                            min={1}
-                            max={50}
-                            unit="km"
-                        />
-                    </motion.div>
-                )}
+                {
+                    !loadingLocation && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.15 }}
+                            className="bg-[#121212] border border-white/5 rounded-2xl p-6"
+                        >
+                            <RangeSlider
+                                value={searchRadius}
+                                onChange={setSearchRadius}
+                                min={1}
+                                max={50}
+                                unit="km"
+                            />
+                        </motion.div>
+                    )
+                }
 
 
                 {/* ✨ Promo Banner */}
@@ -309,14 +338,15 @@ const UserDashboard = () => {
                         </h2>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {[
-                                { icon: Upload, label: "Upload Rx", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
-                                { icon: FileText, label: "My Orders", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20" },
-                                { icon: Star, label: "Saved Stores", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20" },
-                                { icon: Navigation, label: "Map View", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" }
+                                { icon: Upload, label: "Upload Rx", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", onClick: () => { } },
+                                { icon: FileText, label: "My Orders", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", onClick: () => { } },
+                                { icon: Star, label: "Saved Stores", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20", onClick: () => { } },
+                                { icon: Navigation, label: "Map View", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", onClick: () => setShowMap(true) }
                             ].map((action, i) => (
                                 <button
                                     key={i}
-                                    className={`flex flex-col items-center justify-center gap-3 p-6 rounded-2xl border ${action.border} ${action.bg} hover:bg-opacity-20 transition-all hover:-translate-y-1 group`}
+                                    onClick={action.onClick}
+                                    className={`flex-col items-center justify-center gap-3 p-6 rounded-2xl border ${action.border} ${action.bg} hover:bg-opacity-20 transition-all hover:-translate-y-1 group flex`}
                                 >
                                     <action.icon className={`w-8 h-8 ${action.color} group-hover:scale-110 transition-transform`} />
                                     <span className="font-semibold text-white/90 text-sm">{action.label}</span>
@@ -421,6 +451,120 @@ const UserDashboard = () => {
                 </button>
             </div>
 
+            {/* 🗺️ Full Screen Map Modal */}
+            <AnimatePresence>
+                {showMap && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex flex-col"
+                    >
+                        <div className="p-4 flex items-center justify-between border-b border-white/10">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
+                                    <Navigation className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-white">Live Store Map</h2>
+                                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                                        <MapPin className="w-3 h-3" /> {userAddress || "Detecting address..."}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowMap(false)}
+                                className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+                            >
+                                <Activity className="w-6 h-6 rotate-45" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 relative">
+                            {userLocation ? (
+                                <MapContainer
+                                    center={[userLocation.latitude, userLocation.longitude]}
+                                    zoom={14}
+                                    style={{ width: "100%", height: "100%", background: "#1a1a1a" }}
+                                    zoomControl={false}
+                                >
+                                    <TileLayer
+                                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                    />
+                                    <RecenterMap position={{ lat: userLocation.latitude, lng: userLocation.longitude }} />
+
+                                    {/* User Marker */}
+                                    <Marker
+                                        position={[userLocation.latitude, userLocation.longitude]}
+                                        icon={userIcon}
+                                    >
+                                        <Popup>
+                                            <div className="p-1">
+                                                <p className="font-bold text-xs">Your Location</p>
+                                            </div>
+                                        </Popup>
+                                    </Marker>
+
+                                    {/* Store Markers */}
+                                    {nearbyStores.map(store => (
+                                        <Marker
+                                            key={store.id}
+                                            position={[store.latitude, store.longitude]}
+                                            icon={storeIcon}
+                                            eventHandlers={{
+                                                click: () => setSelectedStore(store),
+                                            }}
+                                        >
+                                            <Popup>
+                                                <div className="p-2 text-black max-w-[200px] min-w-[150px]">
+                                                    <h3 className="font-bold text-sm mb-1">{store.name}</h3>
+                                                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">{store.address}</p>
+                                                    <div className="flex justify-between items-center border-t pt-2 mt-1">
+                                                        <span className="text-[10px] font-bold text-emerald-600">{store.distance}km away</span>
+                                                        <button
+                                                            onClick={() => navigate(`/store/${store.id}`)}
+                                                            className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded transition-colors"
+                                                        >
+                                                            View
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+                                    ))}
+                                </MapContainer>
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                    <Loader className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
+                                    <p className="text-gray-400">Loading map perspective...</p>
+                                </div>
+                            )}
+
+                            {/* Floating Stats */}
+                            <div className="absolute bottom-6 left-6 right-6 flex justify-center">
+                                <div className="bg-[#121212]/90 backdrop-blur-md border border-emerald-500/20 px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl">
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Stores</span>
+                                        <span className="text-lg font-bold text-emerald-400">{nearbyStores.length}</span>
+                                    </div>
+                                    <div className="w-px h-8 bg-white/10"></div>
+                                    <div className="flex flex-col items-center">
+                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Radius</span>
+                                        <span className="text-lg font-bold text-white">{searchRadius}km</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowMap(false)}
+                                        className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-xl font-bold transition-all text-sm"
+                                    >
+                                        View List
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
