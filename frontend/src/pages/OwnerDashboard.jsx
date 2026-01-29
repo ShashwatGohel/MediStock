@@ -57,7 +57,7 @@ const OwnerDashboard = () => {
             setLoading(true);
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://localhost:5000/api/medicines/low-stock?threshold=10", {
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/medicines/low-stock?threshold=10", {
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
@@ -104,7 +104,7 @@ const OwnerDashboard = () => {
             setMedicinesLoading(true);
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://localhost:5000/api/medicines/my-medicines", {
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/medicines/my-medicines", {
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
@@ -144,7 +144,7 @@ const OwnerDashboard = () => {
             setStatsLoading(true);
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://localhost:5000/api/bills/daily-stats", {
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/bills/daily-stats", {
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
@@ -207,7 +207,7 @@ const OwnerDashboard = () => {
             if (!storedUser || !storedUser._id) return;
 
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:5000/api/stores/${storedUser._id}`, {
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/${storedUser._id}`, {
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
@@ -247,7 +247,7 @@ const OwnerDashboard = () => {
             const address = await getAddressFromCoords(latitude, longitude);
 
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/stores/location", {
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/stores/location", {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -298,7 +298,7 @@ const OwnerDashboard = () => {
         try {
             const token = localStorage.getItem("token");
 
-            const response = await fetch(`http://localhost:5000/api/medicines/delete/${medicineId}`, {
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/medicines/delete/${medicineId}`, {
                 method: "DELETE",
                 headers: {
                     "Authorization": `Bearer ${token}`

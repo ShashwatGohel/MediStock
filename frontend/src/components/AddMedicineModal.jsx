@@ -48,7 +48,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
         try {
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://localhost:5000/api/medicines/add", {
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/medicines/add", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -103,7 +103,7 @@ const UserDashboard = () => {
         try {
             setLoadingStores(true);
             const response = await fetch(
-                `http://localhost:5000/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
+                `https://medistock-3a3y.onrender.com/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
             );
             const data = await response.json();
 

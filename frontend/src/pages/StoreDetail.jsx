@@ -34,7 +34,7 @@ const StoreDetail = () => {
     const fetchStoreDetails = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`http://localhost:5000/api/stores/${storeId}`);
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/${storeId}`);
             const data = await response.json();
 
             if (data.success) {
@@ -53,7 +53,7 @@ const StoreDetail = () => {
     const fetchStoreMedicines = async () => {
         try {
             setMedicinesLoading(true);
-            const response = await fetch(`http://localhost:5000/api/stores/${storeId}/medicines`);
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/${storeId}/medicines`);
             const data = await response.json();
 
             if (data.success) {
