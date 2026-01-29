@@ -5,6 +5,8 @@ import Signup from "./pages/signup";
 import UserDashboard from "./pages/UserDashboard";
 import OwnerDashboard from "./pages/OwnerDashboard";
 import StoreDetail from "./pages/StoreDetail";
+import MyOrders from "./pages/MyOrders";
+import SavedStores from "./pages/SavedStores";
 import NotFound from "./pages/NotFound";
 
 function App() {
@@ -18,6 +20,8 @@ function App() {
         <Route path="/user-dashboard" element={<UserDashboard />} />
         <Route path="/owner-dashboard" element={<OwnerDashboard />} />
         <Route path="/store/:storeId" element={<StoreDetail />} />
+        <Route path="/my-orders" element={<MyOrders />} />
+        <Route path="/saved-stores" element={<SavedStores />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

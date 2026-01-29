@@ -108,7 +108,7 @@ export const validateCoordinates = (lat, lng) => {
 // Get location from localStorage or return null
 export const getSavedLocation = () => {
     try {
-        const saved = localStorage.getItem("userLocation");
+        const saved = sessionStorage.getItem("userLocation");
         if (saved) {
             return JSON.parse(saved);
         }
@@ -121,7 +121,7 @@ export const getSavedLocation = () => {
 // Save location to localStorage
 export const saveLocation = (latitude, longitude) => {
     try {
-        localStorage.setItem(
+        sessionStorage.setItem(
             "userLocation",
             JSON.stringify({ latitude, longitude, timestamp: Date.now() })
         );

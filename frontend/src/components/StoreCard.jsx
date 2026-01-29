@@ -60,7 +60,18 @@ const StoreCard = ({ store, onClick, index = 0 }) => {
                     </div>
                 </div>
 
-                <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all flex-shrink-0 ml-2" />
+                <div className="flex flex-col items-end gap-2">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (store.onToggleSave) store.onToggleSave(store.id);
+                        }}
+                        className={`p-2 rounded-lg border transition-all ${store.isSaved ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-500' : 'bg-white/5 border-white/5 text-gray-500 hover:text-white'}`}
+                    >
+                        <Star className={`w-4 h-4 ${store.isSaved ? 'fill-yellow-500' : ''}`} />
+                    </button>
+                    <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
+                </div>
             </div>
         </motion.div>
     );

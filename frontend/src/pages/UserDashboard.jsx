@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
     Search, MapPin, Bell, User, History, Upload, FileText,
     Navigation, Filter, HeartPulse, ChevronRight, Star, Clock,
     AlertCircle, Phone, Activity, Sparkles, Thermometer, Pill,
-    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff
+    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff, X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import RangeSlider from "../components/RangeSlider";
@@ -13,6 +13,7 @@ import { getCurrentLocation, saveLocation, getSavedLocation, getAddressFromCoord
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { userIcon, storeIcon } from "../utils/MapMarkerIcons";
+import PrescriptionModal from "../components/PrescriptionModal";
 
 // Helper component to update map view when location changes
 const RecenterMap = ({ position }) => {
@@ -30,6 +31,7 @@ const RecenterMap = ({ position }) => {
 
 const UserDashboard = () => {
     const navigate = useNavigate();
+    const resultsRef = useRef(null);
     const [selectedStore, setSelectedStore] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [user, setUser] = useState(null);
@@ -44,6 +46,11 @@ const UserDashboard = () => {
     const [loadingLocation, setLoadingLocation] = useState(true);
     const [loadingStores, setLoadingStores] = useState(false);
     const [locationError, setLocationError] = useState("");
+    const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+    const [userOrders, setUserOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+    const [showLocationModal, setShowLocationModal] = useState(false);
+    const [savedStoreIds, setSavedStoreIds] = useState([]);
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -97,20 +104,85 @@ const UserDashboard = () => {
             setLoadingLocation(false);
         }
     };
+    const fetchUserOrders = async () => {
+        try {
+            setLoadingOrders(true);
+            const token = localStorage.getItem("token");
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/orders/user-orders", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setUserOrders(data.orders);
+            }
+        } catch (error) {
+            console.error("Error fetching orders:", error);
+        } finally {
+            setLoadingOrders(false);
+        }
+    };
+
+    const fetchSavedStores = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch("https://medistock-3a3y.onrender.com/api/stores/saved", {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                setSavedStoreIds(data.stores.map(s => s.id));
+            }
+        } catch (error) {
+            console.error("Error fetching saved stores:", error);
+        }
+    };
+
+    const handleToggleSave = async (storeId) => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/toggle-save/${storeId}`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                if (data.status === "saved") {
+                    setSavedStoreIds(prev => [...prev, storeId]);
+                } else {
+                    setSavedStoreIds(prev => prev.filter(id => id !== storeId));
+                }
+            }
+        } catch (error) {
+            console.error("Error toggling save:", error);
+        }
+    };
+
+    useEffect(() => {
+        if (user) {
+            fetchUserOrders();
+            fetchSavedStores();
+        }
+    }, [user]);
+
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("user");
+        localStorage.removeItem("isLoggedIn");
+        navigate("/login");
+    };
+
     const fetchNearbyStores = async () => {
         if (!userLocation) return;
-
         try {
             setLoadingStores(true);
             const response = await fetch(
                 `https://medistock-3a3y.onrender.com/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
             );
             const data = await response.json();
-
             if (data.success) {
                 setNearbyStores(data.stores);
             } else {
-                console.error("Failed to fetch stores:", data.message);
                 setNearbyStores([]);
             }
         } catch (error) {
@@ -121,12 +193,43 @@ const UserDashboard = () => {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        localStorage.removeItem("user");
-        localStorage.removeItem("isLoggedIn");
-        navigate("/login");
+    const handleSearchClick = async () => {
+        if (!searchQuery.trim()) {
+            fetchNearbyStores();
+            return;
+        }
+
+        try {
+            setLoadingStores(true);
+            const response = await fetch(
+                `https://medistock-3a3y.onrender.com/api/stores/search?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}&medicine=${encodeURIComponent(searchQuery)}`
+            );
+            const data = await response.json();
+            if (data.success) {
+                setNearbyStores(data.stores);
+                setTimeout(() => {
+                    resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 100);
+            } else {
+                setNearbyStores([]);
+            }
+        } catch (error) {
+            console.error("Error searching medicines:", error);
+            setNearbyStores([]);
+        } finally {
+            setLoadingStores(false);
+        }
+    };
+
+    const handleSearch = (e) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleSearchClick();
+        }
     };
 
     const handleStoreClick = (storeId) => {
@@ -195,23 +298,35 @@ const UserDashboard = () => {
                     className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
                 >
                     <div>
-                        <div className="flex items-center gap-2 text-emerald-400 text-sm font-medium mb-1">
-                            {loadingLocation ? (
-                                <>
-                                    <Loader className="w-4 h-4 animate-spin" />
-                                    <span>Getting your location...</span>
-                                </>
-                            ) : locationError ? (
-                                <>
-                                    <MapPinOff className="w-4 h-4" />
-                                    <span>Using default location</span>
-                                </>
-                            ) : (
-                                <>
-                                    <MapPin className="w-4 h-4" />
-                                    <span className="truncate max-w-[200px] sm:max-w-md">{userAddress || "Your Location"}</span>
-                                </>
-                            )}
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={initializeLocation}
+                                disabled={loadingLocation}
+                                className="flex items-center gap-2 text-emerald-400 text-sm font-medium mb-1 hover:text-emerald-300 transition-colors group text-left"
+                            >
+                                {loadingLocation ? (
+                                    <>
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                        <span>Getting your location...</span>
+                                    </>
+                                ) : locationError ? (
+                                    <>
+                                        <MapPinOff className="w-4 h-4" />
+                                        <span>Using default location (Click to retry)</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <MapPin className="w-4 h-4 group-hover:animate-bounce" />
+                                        <span className="truncate max-w-[200px] sm:max-w-md underline decoration-dotted decoration-emerald-500/30 underline-offset-4">{userAddress || "Set Live Location"}</span>
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setShowLocationModal(true)}
+                                className="text-xs text-gray-500 hover:text-white mb-1 px-2 py-0.5 rounded border border-white/5 hover:border-white/20 transition-all"
+                            >
+                                Change
+                            </button>
                         </div>
                         <h1 className="text-3xl sm:text-4xl font-bold text-white">
                             Hello, {user ? user.name.split(" ")[0] : "User"} 👋
@@ -236,11 +351,15 @@ const UserDashboard = () => {
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onChange={handleSearch}
+                                onKeyPress={handleKeyPress}
                                 placeholder="Search for medicines, health products..."
                                 className="w-full bg-transparent text-lg text-white placeholder:text-gray-500 focus:outline-none py-3"
                             />
-                            <button className="bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-bold transition-all transform active:scale-95 flex items-center gap-2">
+                            <button
+                                onClick={handleSearchClick}
+                                className="bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-bold transition-all transform active:scale-95 flex items-center gap-2"
+                            >
                                 Search
                             </button>
                         </div>
@@ -256,7 +375,7 @@ const UserDashboard = () => {
                         </div>
                         <span className="text-gray-500 hidden sm:inline">•</span>
                         <div className="text-gray-400">
-                            <span className="text-white font-semibold">{nearbyStores.length}</span> active pharmacies nearby
+                            <span className="text-white font-semibold">{nearbyStores.length}</span> {searchQuery.trim() ? `active pharmacies with "${searchQuery}"` : "active pharmacies nearby"}
                         </div>
                     </div>
                 </motion.div>
@@ -338,9 +457,9 @@ const UserDashboard = () => {
                         </h2>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {[
-                                { icon: Upload, label: "Upload Rx", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", onClick: () => { } },
-                                { icon: FileText, label: "My Orders", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", onClick: () => { } },
-                                { icon: Star, label: "Saved Stores", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20", onClick: () => { } },
+                                { icon: Upload, label: "Upload Rx", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", onClick: () => setShowPrescriptionModal(true) },
+                                { icon: FileText, label: "My Orders", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", onClick: () => navigate("/my-orders") },
+                                { icon: Star, label: "Saved Stores", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20", onClick: () => navigate("/saved-stores") },
                                 { icon: Navigation, label: "Map View", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", onClick: () => setShowMap(true) }
                             ].map((action, i) => (
                                 <button
@@ -378,7 +497,7 @@ const UserDashboard = () => {
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.5 }}
                     >
-                        <div className="flex items-center justify-between mb-4">
+                        <div ref={resultsRef} className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 Nearby Stores
                             </h2>
@@ -405,7 +524,11 @@ const UserDashboard = () => {
                                 nearbyStores.map((store, index) => (
                                     <StoreCard
                                         key={store.id}
-                                        store={store}
+                                        store={{
+                                            ...store,
+                                            isSaved: savedStoreIds.includes(store.id),
+                                            onToggleSave: handleToggleSave
+                                        }}
                                         index={index}
                                         onClick={() => handleStoreClick(store.id)}
                                     />
@@ -416,153 +539,263 @@ const UserDashboard = () => {
 
                 </div>
 
-            </div>
 
-            {/* 🚨 SOS Floating Button */}
-            <div className="fixed bottom-6 right-6 z-50">
+                {/* 🚨 SOS Floating Button */}
+                <div className="fixed bottom-6 right-6 z-50">
+                    <AnimatePresence>
+                        {showSOS && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.9 }}
+                                className="absolute bottom-16 right-0 mb-2 w-64 bg-[#1a1a1a] border border-red-500/20 rounded-2xl shadow-2xl p-4"
+                            >
+                                <h3 className="text-red-500 font-bold mb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Emergency</h3>
+                                <p className="text-gray-400 text-xs mb-3">Call ambulance or nearest hospital immediately.</p>
+                                <div className="space-y-2">
+                                    <button className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-500 rounded-lg text-sm font-bold flex items-center justify-center gap-2">
+                                        <Phone className="w-4 h-4" /> 102 (Ambulance)
+                                    </button>
+                                    <button className="w-full py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-bold">
+                                        Nearby Hospital
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <button
+                        onClick={() => setShowSOS(!showSOS)}
+                        className="w-14 h-14 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-[0_0_30px_rgba(239,68,68,0.4)] flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 relative"
+                    >
+                        <span className="absolute inset-0 rounded-full border-2 border-red-400 animate-ping opacity-75"></span>
+                        <AlertCircle className="w-6 h-6 relative z-10" />
+                    </button>
+                </div>
+
+                {/* 🗺️ Full Screen Map Modal */}
                 <AnimatePresence>
-                    {showSOS && (
+                    {showMap && (
                         <motion.div
-                            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                            className="absolute bottom-16 right-0 mb-2 w-64 bg-[#1a1a1a] border border-red-500/20 rounded-2xl shadow-2xl p-4"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex flex-col"
                         >
-                            <h3 className="text-red-500 font-bold mb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Emergency</h3>
-                            <p className="text-gray-400 text-xs mb-3">Call ambulance or nearest hospital immediately.</p>
-                            <div className="space-y-2">
-                                <button className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-500 rounded-lg text-sm font-bold flex items-center justify-center gap-2">
-                                    <Phone className="w-4 h-4" /> 102 (Ambulance)
+                            <div className="p-4 flex items-center justify-between border-b border-white/10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
+                                        <Navigation className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-white">Live Store Map</h2>
+                                        <p className="text-xs text-gray-400 flex items-center gap-1">
+                                            <MapPin className="w-3 h-3" /> {userAddress || "Detecting address..."}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowMap(false)}
+                                    className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
+                                >
+                                    <Activity className="w-6 h-6 rotate-45" />
                                 </button>
-                                <button className="w-full py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-bold">
-                                    Nearby Hospital
-                                </button>
+                            </div>
+
+                            <div className="flex-1 relative">
+                                {userLocation ? (
+                                    <MapContainer
+                                        center={[userLocation.latitude, userLocation.longitude]}
+                                        zoom={14}
+                                        style={{ width: "100%", height: "100%", background: "#1a1a1a" }}
+                                        zoomControl={false}
+                                    >
+                                        <TileLayer
+                                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                        />
+                                        <RecenterMap position={{ lat: userLocation.latitude, lng: userLocation.longitude }} />
+
+                                        {/* User Marker */}
+                                        <Marker
+                                            position={[userLocation.latitude, userLocation.longitude]}
+                                            icon={userIcon}
+                                        >
+                                            <Popup>
+                                                <div className="p-1">
+                                                    <p className="font-bold text-xs">Your Location</p>
+                                                </div>
+                                            </Popup>
+                                        </Marker>
+
+                                        {/* Store Markers */}
+                                        {nearbyStores.map(store => (
+                                            <Marker
+                                                key={store.id}
+                                                position={[store.latitude, store.longitude]}
+                                                icon={storeIcon}
+                                                eventHandlers={{
+                                                    click: () => setSelectedStore(store),
+                                                }}
+                                            >
+                                                <Popup>
+                                                    <div className="p-2 text-black max-w-[200px] min-w-[150px]">
+                                                        <h3 className="font-bold text-sm mb-1">{store.name}</h3>
+                                                        <p className="text-xs text-gray-600 mb-2 line-clamp-2">{store.address}</p>
+                                                        <div className="flex justify-between items-center border-t pt-2 mt-1">
+                                                            <span className="text-[10px] font-bold text-emerald-600">{store.distance}km away</span>
+                                                            <button
+                                                                onClick={() => navigate(`/store/${store.id}`)}
+                                                                className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded transition-colors"
+                                                            >
+                                                                View
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </Popup>
+                                            </Marker>
+                                        ))}
+                                    </MapContainer>
+                                ) : (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                        <Loader className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
+                                        <p className="text-gray-400">Loading map perspective...</p>
+                                    </div>
+                                )}
+
+                                {/* Floating Stats */}
+                                <div className="absolute bottom-6 left-6 right-6 flex justify-center">
+                                    <div className="bg-[#121212]/90 backdrop-blur-md border border-emerald-500/20 px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl">
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Stores</span>
+                                            <span className="text-lg font-bold text-emerald-400">{nearbyStores.length}</span>
+                                        </div>
+                                        <div className="w-px h-8 bg-white/10"></div>
+                                        <div className="flex flex-col items-center">
+                                            <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Radius</span>
+                                            <span className="text-lg font-bold text-white">{searchRadius}km</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowMap(false)}
+                                            className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-xl font-bold transition-all text-sm"
+                                        >
+                                            View List
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
-                <button
-                    onClick={() => setShowSOS(!showSOS)}
-                    className="w-14 h-14 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-[0_0_30px_rgba(239,68,68,0.4)] flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 relative"
-                >
-                    <span className="absolute inset-0 rounded-full border-2 border-red-400 animate-ping opacity-75"></span>
-                    <AlertCircle className="w-6 h-6 relative z-10" />
-                </button>
-            </div>
+                <PrescriptionModal
+                    isOpen={showPrescriptionModal}
+                    onClose={() => setShowPrescriptionModal(false)}
+                    userLocation={userLocation}
+                />
 
-            {/* 🗺️ Full Screen Map Modal */}
-            <AnimatePresence>
-                {showMap && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-xl flex flex-col"
-                    >
-                        <div className="p-4 flex items-center justify-between border-b border-white/10">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400">
-                                    <Navigation className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-white">Live Store Map</h2>
-                                    <p className="text-xs text-gray-400 flex items-center gap-1">
-                                        <MapPin className="w-3 h-3" /> {userAddress || "Detecting address..."}
-                                    </p>
-                                </div>
+                {/* My Requests Section */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                    <h2 className="text-xl font-bold text-white mb-4">My Medicine Requests</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {userOrders.length === 0 ? (
+                            <div className="col-span-full text-center py-12 bg-[#121212] rounded-2xl border border-white/5">
+                                <p className="text-gray-400">No requests sent yet.</p>
                             </div>
-                            <button
-                                onClick={() => setShowMap(false)}
-                                className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white transition-colors"
-                            >
-                                <Activity className="w-6 h-6 rotate-45" />
-                            </button>
-                        </div>
-
-                        <div className="flex-1 relative">
-                            {userLocation ? (
-                                <MapContainer
-                                    center={[userLocation.latitude, userLocation.longitude]}
-                                    zoom={14}
-                                    style={{ width: "100%", height: "100%", background: "#1a1a1a" }}
-                                    zoomControl={false}
-                                >
-                                    <TileLayer
-                                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                                    />
-                                    <RecenterMap position={{ lat: userLocation.latitude, lng: userLocation.longitude }} />
-
-                                    {/* User Marker */}
-                                    <Marker
-                                        position={[userLocation.latitude, userLocation.longitude]}
-                                        icon={userIcon}
-                                    >
-                                        <Popup>
-                                            <div className="p-1">
-                                                <p className="font-bold text-xs">Your Location</p>
+                        ) : (
+                            userOrders.map(order => (
+                                <div key={order._id} className="bg-[#121212] border border-white/5 p-4 rounded-xl">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold text-white">{order.storeId?.storeName || "Store"}</h3>
+                                        <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${order.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                                            order.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                order.status === 'confirmed' ? 'bg-blue-500/10 text-blue-500' :
+                                                    'bg-red-500/10 text-red-500'
+                                            }`}>
+                                            {order.status}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        {order.items.map((item, idx) => (
+                                            <div key={idx} className="flex justify-between text-sm text-gray-400">
+                                                <span>{item.medicineName} x {item.quantity}</span>
+                                                <span>₹{item.price * item.quantity}</span>
                                             </div>
-                                        </Popup>
-                                    </Marker>
-
-                                    {/* Store Markers */}
-                                    {nearbyStores.map(store => (
-                                        <Marker
-                                            key={store.id}
-                                            position={[store.latitude, store.longitude]}
-                                            icon={storeIcon}
-                                            eventHandlers={{
-                                                click: () => setSelectedStore(store),
-                                            }}
-                                        >
-                                            <Popup>
-                                                <div className="p-2 text-black max-w-[200px] min-w-[150px]">
-                                                    <h3 className="font-bold text-sm mb-1">{store.name}</h3>
-                                                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">{store.address}</p>
-                                                    <div className="flex justify-between items-center border-t pt-2 mt-1">
-                                                        <span className="text-[10px] font-bold text-emerald-600">{store.distance}km away</span>
-                                                        <button
-                                                            onClick={() => navigate(`/store/${store.id}`)}
-                                                            className="text-[10px] bg-emerald-500 hover:bg-emerald-400 text-white px-2 py-1 rounded transition-colors"
-                                                        >
-                                                            View
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </Popup>
-                                        </Marker>
-                                    ))}
-                                </MapContainer>
-                            ) : (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <Loader className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
-                                    <p className="text-gray-400">Loading map perspective...</p>
+                                        ))}
+                                    </div>
+                                    <div className="border-t border-white/5 mt-3 pt-3 flex justify-between items-center">
+                                        <span className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</span>
+                                        <span className="font-bold text-white">Total: ₹{order.totalAmount}</span>
+                                    </div>
+                                    {order.status === 'approved' && (
+                                        <p className="text-[10px] text-emerald-400 mt-2 bg-emerald-400/5 p-2 rounded border border-emerald-400/10">
+                                            Store has kept your medicines aside. Visit the store to confirm.
+                                        </p>
+                                    )}
                                 </div>
-                            )}
-
-                            {/* Floating Stats */}
-                            <div className="absolute bottom-6 left-6 right-6 flex justify-center">
-                                <div className="bg-[#121212]/90 backdrop-blur-md border border-emerald-500/20 px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl">
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Stores</span>
-                                        <span className="text-lg font-bold text-emerald-400">{nearbyStores.length}</span>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </div>
+            {/* 📍 Manual Location Modal */}
+            <AnimatePresence>
+                {showLocationModal && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            className="bg-[#121212] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden"
+                        >
+                            <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-white">Set Your Location</h3>
+                                <button onClick={() => setShowLocationModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <X className="w-5 h-5 text-gray-400" />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-gray-500 uppercase">Search Address</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Enter your area or city..."
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl py-2 pl-10 pr-4 text-white focus:outline-none focus:border-emerald-500"
+                                            onKeyPress={async (e) => {
+                                                if (e.key === 'Enter') {
+                                                    const query = e.target.value;
+                                                    try {
+                                                        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                                                        const data = await res.json();
+                                                        if (data && data[0]) {
+                                                            const newLoc = { latitude: parseFloat(data[0].lat), longitude: parseFloat(data[0].lon) };
+                                                            setUserLocation(newLoc);
+                                                            setUserAddress(data[0].display_name);
+                                                            saveLocation(newLoc.latitude, newLoc.longitude);
+                                                            setShowLocationModal(false);
+                                                        } else {
+                                                            alert("Address not found");
+                                                        }
+                                                    } catch (err) { alert("Error searching address"); }
+                                                }
+                                            }}
+                                        />
                                     </div>
-                                    <div className="w-px h-8 bg-white/10"></div>
-                                    <div className="flex flex-col items-center">
-                                        <span className="text-xs text-gray-500 font-bold uppercase tracking-wider">Radius</span>
-                                        <span className="text-lg font-bold text-white">{searchRadius}km</span>
-                                    </div>
+                                    <p className="text-[10px] text-gray-500 italic">Press Enter to search</p>
+                                </div>
+                                <div className="pt-2">
                                     <button
-                                        onClick={() => setShowMap(false)}
-                                        className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-black px-4 py-2 rounded-xl font-bold transition-all text-sm"
+                                        onClick={() => { initializeLocation(); setShowLocationModal(false); }}
+                                        className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
                                     >
-                                        View List
+                                        <Navigation className="w-4 h-4" /> Use Current Location
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    </motion.div>
+                        </motion.div>
+                    </div>
                 )}
             </AnimatePresence>
         </div>
