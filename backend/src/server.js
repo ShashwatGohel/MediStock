@@ -23,26 +23,47 @@ connectDB();
 const app = express();
 
 
-// 🌍 CORS CONFIG (IMPORTANT)
-const allowedOrigins = [    
-  "http://localhost:5174", // Local Vite frontend
-  "https://medi-stock-shashwat-gohel-s-projects.vercel.app/",
-  "https://medi-stock-theta.vercel.app/" // 🔥 REPLACE with your actual Vercel URL
+// // 🌍 CORS CONFIG (IMPORTANT)
+// const allowedOrigins = [
+//   "http://localhost:5173", // Local Vite frontend
+//   "https://medi-stock-shashwat-gohel-s-projects.vercel.app",
+//   "https://medi-stock-theta.vercel.app" // 🔥 REPLACE with your actual Vercel URL
+// ];   
+
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     // Allow requests with no origin (like Postman, mobile apps)
+//     if (!origin) return callback(null, true);
+//     if (allowedOrigins.indexOf(origin) === -1) {
+//       return callback(new Error("CORS not allowed for this origin"), false);
+//     }
+//     return callback(null, true);
+//   },
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+//   credentials: true
+// }));
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://medi-stock-shashwat-gohel-s-projects.vercel.app",
+  "https://medi-stock-theta.vercel.app"
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like Postman, mobile apps)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      return callback(new Error("CORS not allowed for this origin"), false);
+
+    if (allowedOrigins.includes(origin) || origin.includes("vercel.app")) {
+      return callback(null, true);
     }
-    return callback(null, true);
+
+    return callback(new Error("CORS not allowed for this origin"));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+
 
 // Handle preflight requests
 app.options("*", cors());
