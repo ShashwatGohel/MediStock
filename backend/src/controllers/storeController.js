@@ -246,7 +246,7 @@ export const searchStoresByMedicine = async (req, res) => {
 // 📍 Update store location
 export const updateStoreLocation = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, address } = req.body;
     const userId = req.user.id; // From auth middleware
 
     if (!latitude || !longitude) {
@@ -279,6 +279,10 @@ export const updateStoreLocation = async (req, res) => {
       coordinates: [longitude, latitude],
     };
 
+    if (address) {
+      user.storeAddress = address;
+    }
+
     await user.save();
 
     res.json({
@@ -287,6 +291,7 @@ export const updateStoreLocation = async (req, res) => {
       location: {
         latitude: user.latitude,
         longitude: user.longitude,
+        address: user.storeAddress,
       },
     });
   } catch (err) {
