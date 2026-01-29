@@ -25,7 +25,7 @@ const app = express();
 
 // 🌍 CORS CONFIG (IMPORTANT)
 const allowedOrigins = [    
-  "http://localhost:5000", // Local Vite frontend
+  "http://localhost:5174", // Local Vite frontend
   "https://medi-stock-shashwat-gohel-s-projects.vercel.app/",
   "https://medi-stock-theta.vercel.app/" // 🔥 REPLACE with your actual Vercel URL
 ];
