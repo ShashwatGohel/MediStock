@@ -42,6 +42,12 @@ const medicineSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
         },
+
+        reservedQuantity: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
     },
     { timestamps: true }
 );

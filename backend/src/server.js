@@ -9,6 +9,7 @@ import authRoutes from "./routes/authRoutes.js";
 import medicineRoutes from "./routes/medicineRoutes.js";
 import billRoutes from "./routes/billRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
 // Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -22,27 +23,6 @@ connectDB();
 
 const app = express();
 
-
-// // 🌍 CORS CONFIG (IMPORTANT)
-// const allowedOrigins = [
-//   "http://localhost:5173", // Local Vite frontend
-//   "https://medi-stock-shashwat-gohel-s-projects.vercel.app",
-//   "https://medi-stock-theta.vercel.app" // 🔥 REPLACE with your actual Vercel URL
-// ];   
-
-// app.use(cors({
-//   origin: function (origin, callback) {
-//     // Allow requests with no origin (like Postman, mobile apps)
-//     if (!origin) return callback(null, true);
-//     if (allowedOrigins.indexOf(origin) === -1) {
-//       return callback(new Error("CORS not allowed for this origin"), false);
-//     }
-//     return callback(null, true);
-//   },
-//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-//   allowedHeaders: ["Content-Type", "Authorization"],
-//   credentials: true
-// }));
 const allowedOrigins = [
   "http://localhost:5173",
   "https://medi-stock-shashwat-gohel-s-projects.vercel.app",
@@ -79,6 +59,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/medicines", medicineRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/stores", storeRoutes);
+app.use("/api/orders", orderRoutes);
 
 
 // Health Check Route

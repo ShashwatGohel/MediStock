@@ -300,6 +300,55 @@ export const updateStoreLocation = async (req, res) => {
   }
 };
 
+// ⭐ Toggle save/unsave store
+export const toggleSaveStore = async (req, res) => {
+  try {
+    const { storeId } = req.params;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const index = user.savedStores.indexOf(storeId);
+    if (index === -1) {
+      user.savedStores.push(storeId);
+      await user.save();
+      res.json({ success: true, message: "Store saved", status: "saved" });
+    } else {
+      user.savedStores.splice(index, 1);
+      await user.save();
+      res.json({ success: true, message: "Store removed", status: "unsaved" });
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// 📂 Get saved stores
+export const getSavedStores = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findById(userId).populate("savedStores", "name storeName storeAddress location latitude longitude isStoreOpen operatingHours phone");
+
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const savedStores = user.savedStores.map(store => ({
+      id: store._id,
+      name: store.storeName || store.name,
+      address: store.storeAddress,
+      isOpen: store.isStoreOpen,
+      operatingHours: store.operatingHours,
+      phone: store.phone,
+      latitude: store.latitude,
+      longitude: store.longitude,
+    }));
+
+    res.json({ success: true, stores: savedStores });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 // Helper function to calculate distance between two coordinates (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Radius of the Earth in km

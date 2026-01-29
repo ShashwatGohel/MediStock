@@ -25,6 +25,12 @@ const userSchema = new mongoose.Schema(
     // User-specific
     phone: String,
     city: String,
+    savedStores: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
     // Store-specific
     storeName: String,
