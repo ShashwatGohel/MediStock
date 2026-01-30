@@ -46,6 +46,14 @@ const orderSchema = new mongoose.Schema(
         prescriptionImage: {
             type: String, // URL/Path to prescription image if uploaded
         },
+        hiddenFromUser: {
+            type: Boolean,
+            default: false,
+        },
+        hiddenFromStore: {
+            type: Boolean,
+            default: false,
+        }
     },
     { timestamps: true }
 );

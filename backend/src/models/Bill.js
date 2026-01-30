@@ -64,6 +64,10 @@ const billSchema = new mongoose.Schema(
             type: Date,
             default: Date.now,
         },
+        hiddenFromStore: {
+            type: Boolean,
+            default: false,
+        }
     },
     { timestamps: true }
 );

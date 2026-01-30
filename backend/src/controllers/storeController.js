@@ -163,12 +163,19 @@ export const getStoreMedicines = async (req, res) => {
 // 💊 Search stores that have a specific medicine
 export const searchStoresByMedicine = async (req, res) => {
   try {
-    const { lat, lng, radius = 5, medicine } = req.query;
+    const { lat, lng, radius = 5, medicine, category } = req.query;
 
-    if (!lat || !lng || !medicine) {
+    if (!lat || !lng) {
       return res.status(400).json({
         success: false,
-        message: "Latitude, longitude, and medicine name are required"
+        message: "Latitude and longitude are required"
+      });
+    }
+
+    if (!medicine && !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Either medicine name or category is required"
       });
     }
 
@@ -177,11 +184,20 @@ export const searchStoresByMedicine = async (req, res) => {
     const radiusInMeters = parseFloat(radius) * 1000;
 
     // Find medicines matching the search
-    const medicines = await Medicine.find({
-      name: { $regex: medicine, $options: "i" },
+    const medQuery = {
       isAvailable: true,
       quantity: { $gt: 0 },
-    }).populate("storeId", "name storeName storeAddress location latitude longitude isStoreOpen operatingHours phone");
+    };
+
+    if (medicine) {
+      medQuery.name = { $regex: medicine, $options: "i" };
+    }
+
+    if (category) {
+      medQuery.category = { $regex: category, $options: "i" };
+    }
+
+    const medicines = await Medicine.find(medQuery).populate("storeId", "name storeName storeAddress location latitude longitude isStoreOpen operatingHours phone");
 
     // Filter stores within radius and calculate distance
     const storesWithMedicine = [];
@@ -344,6 +360,36 @@ export const getSavedStores = async (req, res) => {
     }));
 
     res.json({ success: true, stores: savedStores });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// 👤 Get current store profile
+export const getStoreProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const store = await User.findById(userId).select("name storeName storeAddress location latitude longitude isStoreOpen operatingHours phone email licenseNumber");
+
+    if (!store || store.role !== "store") {
+      return res.status(404).json({ success: false, message: "Store profile not found" });
+    }
+
+    res.json({
+      success: true,
+      store: {
+        id: store._id,
+        name: store.storeName || store.name,
+        address: store.storeAddress,
+        latitude: store.latitude,
+        longitude: store.longitude,
+        isOpen: store.isStoreOpen,
+        operatingHours: store.operatingHours,
+        phone: store.phone,
+        email: store.email,
+        licenseNumber: store.licenseNumber,
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

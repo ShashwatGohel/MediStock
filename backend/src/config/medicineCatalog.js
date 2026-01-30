@@ -1,0 +1,78 @@
+export const medicineCatalog = [
+    // Medicines
+    { name: "Paracetamol 500mg", brand: "Crocin", category: "Medicines" },
+    { name: "Ibuprofen 400mg", brand: "Brufen", category: "Medicines" },
+    { name: "Azithromycin 500mg", brand: "Azithral", category: "Medicines" },
+    { name: "Amoxicillin 500mg", brand: "Augmentin", category: "Medicines" },
+    { name: "Cetirizine 10mg", brand: "Okacet", category: "Medicines" },
+    { name: "Pantoprazole 40mg", brand: "Pan 40", category: "Medicines" },
+    { name: "Metformin 500mg", brand: "Glycomet", category: "Medicines" },
+    { name: "Atorvastatin 10mg", brand: "Lipvas", category: "Medicines" },
+    { name: "Amlodipine 5mg", brand: "Amlokind", category: "Medicines" },
+    { name: "Loratadine 10mg", brand: "Claritin", category: "Medicines" },
+    { name: "Omeprazole 20mg", brand: "Omez", category: "Medicines" },
+    { name: "Ranitidine 150mg", brand: "Rantac", category: "Medicines" },
+    { name: "Diclofenac Gel", brand: "Voveran", category: "Medicines" },
+    { name: "Insulin Glargine", brand: "Lantus", category: "Medicines" },
+    { name: "Salbutamol Inhaler", brand: "Asthalin", category: "Medicines" },
+
+    // First Aid
+    { name: "Adhesive Bandages", brand: "Band-Aid", category: "First Aid" },
+    { name: "Antiseptic Liquid", brand: "Dettol", category: "First Aid" },
+    { name: "Cotton Wool", brand: "Generic", category: "First Aid" },
+    { name: "Micropore Tape", brand: "3M", category: "First Aid" },
+    { name: "Sterile Gauze Pad", brand: "Generic", category: "First Aid" },
+    { name: "Hydrogen Peroxide", brand: "Generic", category: "First Aid" },
+    { name: "Povidone-Iodine Ointment", brand: "Betadine", category: "First Aid" },
+    { name: "Elastic Bandage", brand: "Generic", category: "First Aid" },
+    { name: "Alcohol Swabs", brand: "Generic", category: "First Aid" },
+    { name: "Burn Relief Ointment", brand: "Burnol", category: "First Aid" },
+
+    // Skincare
+    { name: "Moisturizing Cream", brand: "Cetaphil", category: "Skincare" },
+    { name: "Sunscreen SPF 50", brand: "Neutrogena", category: "Skincare" },
+    { name: "Acne Gel", brand: "Benzac AC", category: "Skincare" },
+    { name: "Aloe Vera Gel", brand: "Patandjali", category: "Skincare" },
+    { name: "Anti-fungal Powder", brand: "Abzorb", category: "Skincare" },
+    { name: "Hand Cream", brand: "Nivea", category: "Skincare" },
+    { name: "Face Wash", brand: "Himalaya", category: "Skincare" },
+    { name: "Calamine Lotion", brand: "Lacto Calamine", category: "Skincare" },
+    { name: "Lip Balm", brand: "Vaseline", category: "Skincare" },
+    { name: "Vitamin E Capsule", brand: "Evion", category: "Skincare" },
+
+    // Baby Care
+    { name: "Baby Diapers", brand: "Pampers", category: "Baby Care" },
+    { name: "Baby Wipes", brand: "Johnson's", category: "Baby Care" },
+    { name: "Baby Lotion", brand: "Himalaya", category: "Baby Care" },
+    { name: "Baby Powder", brand: "Johnson's", category: "Baby Care" },
+    { name: "Diaper Rash Cream", brand: "Sebamed", category: "Baby Care" },
+    { name: "Baby Shampoo", brand: "Johnson's", category: "Baby Care" },
+    { name: "Baby Oil", brand: "Dabur Lal", category: "Baby Care" },
+    { name: "Baby Soap", brand: "Himalaya", category: "Baby Care" },
+    { name: "Baby Food", brand: "Cerelac", category: "Baby Care" },
+    { name: "Feeding Bottle", brand: "Philips Avent", category: "Baby Care" },
+
+    // Devices
+    { name: "Digital Thermometer", brand: "Dr. Trust", category: "Devices" },
+    { name: "Blood Pressure Monitor", brand: "Omron", category: "Devices" },
+    { name: "Glucometer", brand: "Accu-Chek", category: "Devices" },
+    { name: "Pulse Oximeter", brand: "Dr. Morepen", category: "Devices" },
+    { name: "Nebulizer", brand: "Omron", category: "Devices" },
+    { name: "Vaporizer", brand: "Generic", category: "Devices" },
+    { name: "Weighing Scale", brand: "HealthSense", category: "Devices" },
+    { name: "Hot Water Bag", brand: "Generic", category: "Devices" },
+    { name: "Orthopedic Heating Pad", brand: "Flamingo", category: "Devices" },
+    { name: "Walking Stick", brand: "Generic", category: "Devices" },
+
+    // Fitness
+    { name: "Whey Protein", brand: "Optimum Nutrition", category: "Fitness" },
+    { name: "Multivitamin Tablets", brand: "Revital H", category: "Fitness" },
+    { name: "Omega 3 Capsules", brand: "MuscleBlaze", category: "Fitness" },
+    { name: "Creatine Monohydrate", brand: "MuscleBlaze", category: "Fitness" },
+    { name: "Energy Drink", brand: "Glucon-D", category: "Fitness" },
+    { name: "Calcium Supplements", brand: "Shelcal", category: "Fitness" },
+    { name: "BCAA Powder", brand: "Scivation Xtend", category: "Fitness" },
+    { name: "Protein Bar", brand: "Yoga Bar", category: "Fitness" },
+    { name: "Gym Shaker", brand: "Generic", category: "Fitness" },
+    { name: "Knee Support", brand: "Tynor", category: "Fitness" }
+];

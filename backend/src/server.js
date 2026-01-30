@@ -10,6 +10,7 @@ import medicineRoutes from "./routes/medicineRoutes.js";
 import billRoutes from "./routes/billRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import initCleanupTask from "./tasks/cleanupTask.js";
 
 // Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +21,9 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 // Connect Database
 connectDB();
+
+// Initialize Daily Cleanup Task
+initCleanupTask();
 
 const app = express();
 
@@ -39,7 +43,7 @@ app.use(cors({
 
     return callback(new Error("CORS not allowed for this origin"));
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));

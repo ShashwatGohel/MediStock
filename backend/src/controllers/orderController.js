@@ -37,7 +37,10 @@ export const createOrder = async (req, res) => {
 export const getUserOrders = async (req, res) => {
     try {
         const userId = req.user.id;
-        const orders = await Order.find({ userId }).populate("storeId", "storeName storeAddress");
+        const orders = await Order.find({
+            userId,
+            hiddenFromUser: { $ne: true }
+        }).populate("storeId", "storeName storeAddress").sort({ createdAt: -1 });
         res.json({ success: true, orders });
     } catch (error) {
         res.status(500).json({ success: false, message: "Failed to fetch orders" });
@@ -47,7 +50,10 @@ export const getUserOrders = async (req, res) => {
 export const getStoreOrders = async (req, res) => {
     try {
         const storeId = req.user.id; // Store owner ID
-        const orders = await Order.find({ storeId }).populate("userId", "name phone");
+        const orders = await Order.find({
+            storeId,
+            hiddenFromStore: { $ne: true }
+        }).populate("userId", "name phone").sort({ createdAt: -1 });
         res.json({ success: true, orders });
     } catch (error) {
         res.status(500).json({ success: false, message: "Failed to fetch store orders" });
@@ -114,5 +120,41 @@ export const updateOrderStatus = async (req, res) => {
     } catch (error) {
         console.error("Error updating order status:", error);
         res.status(500).json({ success: false, message: "Failed to update order status" });
+    }
+};
+
+export const deleteOrder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const order = await Order.findById(id);
+        if (!order) {
+            return res.status(404).json({ success: false, message: "Order not found" });
+        }
+
+        // Only allow deletion of confirmed or cancelled orders
+        if (order.status !== "confirmed" && order.status !== "cancelled") {
+            return res.status(400).json({
+                success: false,
+                message: "Only confirmed or cancelled orders can be deleted"
+            });
+        }
+
+        // Check if the requester is either the user who placed it or the store owner
+        if (order.userId.toString() === userId) {
+            order.hiddenFromUser = true;
+        } else if (order.storeId.toString() === userId) {
+            order.hiddenFromStore = true;
+        } else {
+            return res.status(403).json({ success: false, message: "Unauthorized to delete this order" });
+        }
+
+        await order.save();
+
+        res.json({ success: true, message: "Order removed from list" });
+    } catch (error) {
+        console.error("Error deleting order:", error);
+        res.status(500).json({ success: false, message: "Failed to remove order" });
     }
 };

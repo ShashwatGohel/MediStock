@@ -1,6 +1,7 @@
 import Bill from "../models/Bill.js";
 import Medicine from "../models/Medicine.js";
 import Visit from "../models/Visit.js";
+import Order from "../models/Order.js";
 
 // Create a new bill/transaction
 export const createBill = async (req, res) => {
@@ -117,64 +118,66 @@ export const getDailyStats = async (req, res) => {
         const mongoose = await import('mongoose');
         const storeObjectId = new mongoose.default.Types.ObjectId(storeId);
 
-        // Total Sales Today
-        const salesToday = await Bill.aggregate([
-            {
-                $match: {
-                    storeId: storeObjectId,
-                    date: { $gte: startOfToday }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: "$totalAmount" }
-                }
-            }
+        // Total Sales Today (Bills + Confirmed Orders)
+        const billsSalesToday = await Bill.aggregate([
+            { $match: { storeId: storeObjectId, date: { $gte: startOfToday } } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
         ]);
+
+        const ordersSalesToday = await Order.aggregate([
+            { $match: { storeId: storeObjectId, status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: startOfToday } } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+        ]);
+
+        const totalSalesToday = (billsSalesToday[0]?.total || 0) + (ordersSalesToday[0]?.total || 0);
 
         // Total Sales Yesterday
-        const salesYesterday = await Bill.aggregate([
-            {
-                $match: {
-                    storeId: storeObjectId,
-                    date: {
-                        $gte: startOfYesterday,
-                        $lt: startOfToday
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: null,
-                    total: { $sum: "$totalAmount" }
-                }
-            }
+        const billsSalesYesterday = await Bill.aggregate([
+            { $match: { storeId: storeObjectId, date: { $gte: startOfYesterday, $lt: startOfToday } } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
         ]);
 
-        const totalSalesToday = salesToday[0]?.total || 0;
-        const totalSalesYesterday = salesYesterday[0]?.total || 0;
+        const ordersSalesYesterday = await Order.aggregate([
+            { $match: { storeId: storeObjectId, status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: startOfYesterday, $lt: startOfToday } } },
+            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+        ]);
+
+        const totalSalesYesterday = (billsSalesYesterday[0]?.total || 0) + (ordersSalesYesterday[0]?.total || 0);
+
         const salesChange = totalSalesYesterday > 0
             ? ((totalSalesToday - totalSalesYesterday) / totalSalesYesterday * 100).toFixed(0)
             : 0;
 
-        // Orders Today
-        const ordersToday = await Bill.countDocuments({
+        // Orders Today (Bills + All Orders created today except cancelled)
+        const billsCountToday = await Bill.countDocuments({
             storeId: storeId,
             date: { $gte: startOfToday }
         });
 
-        // Orders Yesterday
-        const ordersYesterday = await Bill.countDocuments({
+        const ordersCountToday = await Order.countDocuments({
             storeId: storeId,
-            date: {
-                $gte: startOfYesterday,
-                $lt: startOfToday
-            }
+            status: { $ne: "cancelled" },
+            createdAt: { $gte: startOfToday }
         });
 
-        const ordersChange = ordersYesterday > 0
-            ? ((ordersToday - ordersYesterday) / ordersYesterday * 100).toFixed(0)
+        const totalOrdersToday = billsCountToday + ordersCountToday;
+
+        // Orders Yesterday
+        const billsCountYesterday = await Bill.countDocuments({
+            storeId: storeId,
+            date: { $gte: startOfYesterday, $lt: startOfToday }
+        });
+
+        const ordersCountYesterday = await Order.countDocuments({
+            storeId: storeId,
+            status: { $ne: "cancelled" },
+            createdAt: { $gte: startOfYesterday, $lt: startOfToday }
+        });
+
+        const totalOrdersYesterday = billsCountYesterday + ordersCountYesterday;
+
+        const ordersChange = totalOrdersYesterday > 0
+            ? ((totalOrdersToday - totalOrdersYesterday) / totalOrdersYesterday * 100).toFixed(0)
             : 0;
 
         // Low Stock Count
@@ -191,10 +194,7 @@ export const getDailyStats = async (req, res) => {
 
         const visitYesterday = await Visit.findOne({
             storeId: storeId,
-            date: {
-                $gte: startOfYesterday,
-                $lt: startOfToday
-            }
+            date: { $gte: startOfYesterday, $lt: startOfToday }
         });
 
         const visitsToday = visitToday?.count || 0;
@@ -208,7 +208,7 @@ export const getDailyStats = async (req, res) => {
             stats: {
                 totalSales: totalSalesToday,
                 salesChange: parseInt(salesChange),
-                ordersToday: ordersToday,
+                ordersToday: totalOrdersToday,
                 ordersChange: parseInt(ordersChange),
                 lowStockCount: lowStockCount,
                 profileVisits: visitsToday,
