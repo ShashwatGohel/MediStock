@@ -154,8 +154,8 @@ const StoreDetail = () => {
                                         <h1 className="text-3xl font-bold text-white mb-2">{store.name}</h1>
                                         <div className="flex items-center gap-2 mb-4">
                                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold ${store.isOpen
-                                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                                : "bg-red-500/10 text-red-400 border border-red-500/20"
                                                 }`}>
                                                 <div className={`w-2 h-2 rounded-full ${store.isOpen ? "bg-green-500" : "bg-red-500"}`} />
                                                 {store.isOpen ? "Open Now" : "Closed"}
@@ -281,9 +281,9 @@ const StoreDetail = () => {
                                                         </span>
                                                     )}
                                                     <span className={`flex items-center gap-1 font-semibold ${medicine.quantity === 0 ? "text-red-400" :
-                                                            medicine.quantity <= 5 ? "text-orange-400" :
-                                                                medicine.quantity <= 10 ? "text-yellow-400" :
-                                                                    "text-green-400"
+                                                        medicine.quantity <= 5 ? "text-orange-400" :
+                                                            medicine.quantity <= 10 ? "text-yellow-400" :
+                                                                "text-green-400"
                                                         }`}>
                                                         <Package className="w-3.5 h-3.5" />
                                                         {medicine.quantity > 0 ? `${medicine.quantity} in stock` : "Out of stock"}

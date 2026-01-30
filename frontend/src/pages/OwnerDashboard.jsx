@@ -165,6 +165,28 @@ const OwnerDashboard = () => {
         } catch (err) { alert("Failed to update status"); }
     };
 
+    const handleDeleteMedicine = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this medicine?")) return;
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/medicines/delete/${id}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                fetchAllMedicines();
+                fetchLowStockMedicines();
+                fetchDailyStats();
+            } else {
+                alert(data.message || "Failed to delete medicine");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error deleting medicine");
+        }
+    };
+
     const handleLogout = () => { localStorage.clear(); navigate("/login"); };
 
     useEffect(() => {
@@ -225,24 +247,24 @@ const OwnerDashboard = () => {
                         <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
                             <h2 className="text-xl font-bold text-white mb-4">Pending Requests</h2>
                             <div className="space-y-4">
-                                {ordersLoading ? <Loader className="w-8 h-8 animate-spin mx-auto text-indigo-500" /> : 
-                                 orders.length === 0 ? <p className="text-gray-500 text-center py-4">No active requests.</p> :
-                                 orders.map(order => (
-                                     <div key={order._id} className="bg-white/5 border border-white/10 p-4 rounded-xl">
-                                         <div className="flex justify-between items-start mb-3">
-                                             <div><h4 className="font-bold text-white">{order.userId?.name}</h4><p className="text-xs text-gray-400">{order.userId?.phone}</p></div>
-                                             <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${order.status === 'pending' ? 'text-yellow-500 bg-yellow-500/10' : 'text-emerald-500 bg-emerald-500/10'}`}>{order.status}</span>
-                                         </div>
-                                         <div className="space-y-1 mb-4">
-                                             {order.items.map((it, idx) => <div key={idx} className="flex justify-between text-sm text-gray-300"><span>{it.medicineName} x {it.quantity}</span><span>₹{it.price * it.quantity}</span></div>)}
-                                         </div>
-                                         <div className="flex gap-2">
-                                             {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order._id, 'approved')} className="flex-1 bg-emerald-500 text-black py-2 rounded-lg font-bold text-sm">Approve</button>}
-                                             {order.status === 'approved' && <button onClick={() => handleUpdateOrderStatus(order._id, 'confirmed')} className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-bold text-sm">Confirm</button>}
-                                             <button onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')} className="px-4 bg-white/5 border border-white/10 text-red-500 py-2 rounded-lg font-bold text-sm">Cancel</button>
-                                         </div>
-                                     </div>
-                                 ))}
+                                {ordersLoading ? <Loader className="w-8 h-8 animate-spin mx-auto text-indigo-500" /> :
+                                    orders.length === 0 ? <p className="text-gray-500 text-center py-4">No active requests.</p> :
+                                        orders.map(order => (
+                                            <div key={order._id} className="bg-white/5 border border-white/10 p-4 rounded-xl">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div><h4 className="font-bold text-white">{order.userId?.name}</h4><p className="text-xs text-gray-400">{order.userId?.phone}</p></div>
+                                                    <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${order.status === 'pending' ? 'text-yellow-500 bg-yellow-500/10' : 'text-emerald-500 bg-emerald-500/10'}`}>{order.status}</span>
+                                                </div>
+                                                <div className="space-y-1 mb-4">
+                                                    {order.items.map((it, idx) => <div key={idx} className="flex justify-between text-sm text-gray-300"><span>{it.medicineName} x {it.quantity}</span><span>₹{it.price * it.quantity}</span></div>)}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order._id, 'approved')} className="flex-1 bg-emerald-500 text-black py-2 rounded-lg font-bold text-sm">Approve</button>}
+                                                    {order.status === 'approved' && <button onClick={() => handleUpdateOrderStatus(order._id, 'confirmed')} className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-bold text-sm">Confirm</button>}
+                                                    <button onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')} className="px-4 bg-white/5 border border-white/10 text-red-500 py-2 rounded-lg font-bold text-sm">Cancel</button>
+                                                </div>
+                                            </div>
+                                        ))}
                             </div>
                         </div>
 
@@ -250,12 +272,27 @@ const OwnerDashboard = () => {
                             <h2 className="text-xl font-bold text-white mb-4">Inventory</h2>
                             <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
                                 {medicinesLoading ? <Loader className="w-8 h-8 animate-spin mx-auto" /> :
-                                 filteredMedicines.map(med => (
-                                     <div key={med._id} className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between">
-                                         <div><h4 className="text-sm font-semibold text-white">{med.name}</h4><p className="text-xs text-gray-400">{med.brand} • {med.category}</p></div>
-                                         <div className="text-right"><p className="font-bold text-white">{med.quantity} <span className="text-gray-500 text-xs">units</span></p><p className="text-xs text-gray-400">₹{med.price}</p></div>
-                                     </div>
-                                 ))}
+                                    filteredMedicines.map(med => (
+                                        <div key={med._id} className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center group">
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-white">{med.name}</h4>
+                                                <p className="text-xs text-gray-400">{med.brand} • {med.category}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-right">
+                                                    <p className="font-bold text-white">{med.quantity} <span className="text-gray-500 text-xs">units</span></p>
+                                                    <p className="text-xs text-gray-400">₹{med.price}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteMedicine(med._id)}
+                                                    className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Delete Medicine"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
                             </div>
                         </div>
                     </div>
@@ -265,12 +302,12 @@ const OwnerDashboard = () => {
                             <h2 className="text-xl font-bold text-white mb-4">Stock Alerts</h2>
                             <div className="space-y-3">
                                 {stockAlerts.length === 0 ? <p className="text-sm text-gray-500">All good!</p> :
-                                 stockAlerts.map(alert => (
-                                     <div key={alert.id} className="p-3 bg-white/5 rounded-lg flex items-center gap-3">
-                                         <AlertTriangle className={`w-5 h-5 ${alert.type === 'critical' ? 'text-red-500' : 'text-orange-400'}`} />
-                                         <div><h4 className="text-sm font-semibold text-white">{alert.name}</h4><p className="text-xs text-gray-400">{alert.status}</p></div>
-                                     </div>
-                                 ))}
+                                    stockAlerts.map(alert => (
+                                        <div key={alert.id} className="p-3 bg-white/5 rounded-lg flex items-center gap-3">
+                                            <AlertTriangle className={`w-5 h-5 ${alert.type === 'critical' ? 'text-red-500' : 'text-orange-400'}`} />
+                                            <div><h4 className="text-sm font-semibold text-white">{alert.name}</h4><p className="text-xs text-gray-400">{alert.status}</p></div>
+                                        </div>
+                                    ))}
                             </div>
                         </div>
 

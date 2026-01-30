@@ -13,6 +13,9 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [catalogResults, setCatalogResults] = useState([]);
+    const [searchingCatalog, setSearchingCatalog] = useState(false);
+    const [showCatalogDropdown, setShowCatalogDropdown] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -21,6 +24,43 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
             [name]: value
         }));
         setError(""); // Clear error on input change
+
+        if (name === "name") {
+            handleCatalogSearch(value);
+        }
+    };
+
+    const handleCatalogSearch = async (query) => {
+        if (!query.trim() || query.length < 2) {
+            setCatalogResults([]);
+            setShowCatalogDropdown(false);
+            return;
+        }
+
+        try {
+            setSearchingCatalog(true);
+            const response = await fetch(`https://medistock-3a3y.onrender.com/api/medicines/catalog?search=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            if (data.success) {
+                setCatalogResults(data.catalog);
+                setShowCatalogDropdown(data.catalog.length > 0);
+            }
+        } catch (err) {
+            console.error("Catalog search error:", err);
+        } finally {
+            setSearchingCatalog(false);
+        }
+    };
+
+    const selectFromCatalog = (item) => {
+        setFormData(prev => ({
+            ...prev,
+            name: item.name,
+            brand: item.brand,
+            category: item.category
+        }));
+        setShowCatalogDropdown(false);
+        setCatalogResults([]);
     };
 
     const handleSubmit = async (e) => {
@@ -151,15 +191,46 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                                         <Pill className="w-4 h-4 text-indigo-400" />
                                         Medicine Name <span className="text-red-400">*</span>
                                     </label>
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        placeholder="e.g., Paracetamol 500mg"
-                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-indigo-500/50 transition-all"
-                                        required
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            onFocus={() => formData.name.length >= 2 && setShowCatalogDropdown(true)}
+                                            placeholder="e.g., Paracetamol 500mg"
+                                            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-indigo-500/50 transition-all"
+                                            required
+                                            autoComplete="off"
+                                        />
+
+                                        {/* Catalog Dropdown */}
+                                        <AnimatePresence>
+                                            {showCatalogDropdown && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: -10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -10 }}
+                                                    className="absolute z-[60] left-0 right-0 mt-2 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto"
+                                                >
+                                                    {catalogResults.map((item, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() => selectFromCatalog(item)}
+                                                            className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 transition-colors flex items-center justify-between group"
+                                                        >
+                                                            <div>
+                                                                <p className="text-white font-medium group-hover:text-indigo-400 transition-colors">{item.name}</p>
+                                                                <p className="text-xs text-gray-500">{item.brand} • {item.category}</p>
+                                                            </div>
+                                                            <div className="text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded uppercase">Catalog</div>
+                                                        </button>
+                                                    ))}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                 </div>
 
                                 {/* Brand & Category */}

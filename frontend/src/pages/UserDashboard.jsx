@@ -14,6 +14,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { userIcon, storeIcon } from "../utils/MapMarkerIcons";
 import PrescriptionModal from "../components/PrescriptionModal";
+import LocationMarker from "../components/LocationMarker";
 
 // Helper component to update map view when location changes
 const RecenterMap = ({ position }) => {
@@ -61,6 +62,13 @@ const UserDashboard = () => {
         // Get user location
         initializeLocation();
     }, []);
+
+    // Prevent map jitter by only updating when location significantly changes or user requests
+    useEffect(() => {
+        if (userLocation && !loadingLocation) {
+            // Optional: debounce this if needed
+        }
+    }, [userLocation]);
 
     useEffect(() => {
         // Fetch stores when location or radius changes
@@ -219,6 +227,10 @@ const UserDashboard = () => {
         } finally {
             setLoadingStores(false);
         }
+    };
+
+    const handleCategoryClick = (category) => {
+        navigate(`/category/${encodeURIComponent(category)}`);
     };
 
     const handleSearch = (e) => {
@@ -433,7 +445,11 @@ const UserDashboard = () => {
                     </div>
                     <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                         {categories.map((cat, idx) => (
-                            <button key={idx} className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all group">
+                            <button
+                                key={idx}
+                                onClick={() => handleCategoryClick(cat.name)}
+                                className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all group"
+                            >
                                 <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                                     <cat.icon className={`w-6 h-6 ${cat.color}`} />
                                 </div>
@@ -785,14 +801,42 @@ const UserDashboard = () => {
                                     </div>
                                     <p className="text-[10px] text-gray-500 italic">Press Enter to search</p>
                                 </div>
-                                <div className="pt-2">
-                                    <button
-                                        onClick={() => { initializeLocation(); setShowLocationModal(false); }}
-                                        className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                            </div>
+
+                            {/* Leaflet Map for Manual Selection */}
+                            <div className="h-64 rounded-xl overflow-hidden border border-white/10 relative z-0">
+                                {(userLocation || showLocationModal) && (
+                                    <MapContainer
+                                        center={userLocation ? [userLocation.latitude, userLocation.longitude] : [19.0760, 72.8777]}
+                                        zoom={13}
+                                        style={{ height: "100%", width: "100%" }}
+                                        className="z-0"
                                     >
-                                        <Navigation className="w-4 h-4" /> Use Current Location
-                                    </button>
-                                </div>
+                                        <TileLayer
+                                            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                                        />
+                                        {userLocation && <Marker position={[userLocation.latitude, userLocation.longitude]} icon={userIcon} />}
+                                        <LocationMarker setUserLocation={setUserLocation} setUserAddress={setUserAddress} />
+                                    </MapContainer>
+                                )}
+                            </div>
+
+                            <div className="pt-2">
+                                <button
+                                    onClick={() => { initializeLocation(); setShowLocationModal(false); }}
+                                    className="w-full py-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Navigation className="w-4 h-4" /> Use My Current GPS Location
+                                </button>
+                            </div>
+                            <div className="flex justify-end pt-2">
+                                <button
+                                    onClick={() => setShowLocationModal(false)}
+                                    className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-bold text-sm transition-all"
+                                >
+                                    Confirm Location
+                                </button>
                             </div>
                         </motion.div>
                     </div>

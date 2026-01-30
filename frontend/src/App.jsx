@@ -8,6 +8,7 @@ import StoreDetail from "./pages/StoreDetail";
 import MyOrders from "./pages/MyOrders";
 import SavedStores from "./pages/SavedStores";
 import NotFound from "./pages/NotFound";
+import CategoryPage from "./pages/CategoryPage";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/store/:storeId" element={<StoreDetail />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/saved-stores" element={<SavedStores />} />
+        <Route path="/category/:categoryName" element={<CategoryPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
