@@ -1,7 +1,7 @@
-import { MapPin, Navigation, Star, ChevronRight, Clock, Package } from "lucide-react";
+import { MapPin, Navigation, Star, ChevronRight, Clock, Package, ShoppingBag } from "lucide-react";
 import { motion } from "framer-motion";
 
-const StoreCard = ({ store, onClick, index = 0 }) => {
+const StoreCard = ({ store, onClick, onOrderClick, index = 0 }) => {
     const getStatusColor = () => {
         if (!store.isOpen) return "text-red-400";
         return "text-green-400";
@@ -73,6 +73,33 @@ const StoreCard = ({ store, onClick, index = 0 }) => {
                     <ChevronRight className="w-5 h-5 text-gray-600 group-hover:text-emerald-400 group-hover:translate-x-1 transition-all flex-shrink-0" />
                 </div>
             </div>
+
+            {/* Matching Medicines */}
+            {store.medicines && store.medicines.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                    <p className="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-2">Matching Medicines</p>
+                    <div className="grid gap-2">
+                        {store.medicines.map((med) => (
+                            <div key={med.id} className="flex items-center justify-between p-2 rounded-lg bg-white/[0.03] border border-white/5 group/med">
+                                <div className="min-w-0">
+                                    <h4 className="text-sm font-semibold text-white truncate">{med.name}</h4>
+                                    <p className="text-[10px] text-gray-500">{med.brand} • ₹{med.price}</p>
+                                </div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (onOrderClick) onOrderClick({ ...med, storeId: { _id: store.id, storeName: store.name } });
+                                    }}
+                                    className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg text-[10px] font-bold transition-all border border-emerald-500/10 flex items-center gap-1.5 whitespace-nowrap"
+                                >
+                                    <ShoppingBag className="w-3 h-3" />
+                                    Order Now
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </motion.div>
     );
 };

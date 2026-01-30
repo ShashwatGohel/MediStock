@@ -9,6 +9,7 @@ import MyOrders from "./pages/MyOrders";
 import SavedStores from "./pages/SavedStores";
 import NotFound from "./pages/NotFound";
 import CategoryPage from "./pages/CategoryPage";
+import MedicineSearch from "./pages/MedicineSearch";
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/saved-stores" element={<SavedStores />} />
         <Route path="/category/:categoryName" element={<CategoryPage />} />
+        <Route path="/medicine/:medicineName" element={<MedicineSearch />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

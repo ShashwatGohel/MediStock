@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-    ChevronLeft, Package, Clock, Calendar, CheckCircle2,
-    XCircle, Clock3, AlertCircle, Phone, MapPin, Search
+    XCircle, Clock3, AlertCircle, Phone, MapPin, Search, Trash2
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -20,7 +19,7 @@ const MyOrders = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/orders/user-orders", {
+            const response = await fetch("http://localhost:5000/api/orders/user-orders", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -31,6 +30,26 @@ const MyOrders = () => {
             console.error("Error fetching orders:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeleteOrder = async (orderId) => {
+        if (!window.confirm("Delete this request history?")) return;
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (response.ok) {
+                fetchOrders();
+            } else {
+                const data = await response.json();
+                alert(data.message || "Failed to delete request");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error deleting request");
         }
     };
 
@@ -82,8 +101,8 @@ const MyOrders = () => {
                             key={tab}
                             onClick={() => setFilter(tab)}
                             className={`px-4 py-2 rounded-xl text-sm font-bold capitalize transition-all border ${filter === tab
-                                    ? "bg-emerald-500 text-black border-emerald-500"
-                                    : "bg-white/5 text-gray-400 border-white/5 hover:border-white/10"
+                                ? "bg-emerald-500 text-black border-emerald-500"
+                                : "bg-white/5 text-gray-400 border-white/5 hover:border-white/10"
                                 }`}
                         >
                             {tab}
@@ -132,7 +151,7 @@ const MyOrders = () => {
                                     </div>
                                     <div className={`self-start px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-2 ${getStatusStyle(order.status)}`}>
                                         {getStatusIcon(order.status)}
-                                        {order.status.toUpperCase()}
+                                        {order.status === 'confirmed' ? 'APPROVED' : order.status.toUpperCase()}
                                     </div>
                                 </div>
 
@@ -177,6 +196,15 @@ const MyOrders = () => {
                                     >
                                         View Details
                                     </button>
+                                    {(order.status === 'confirmed' || order.status === 'cancelled') && (
+                                        <button
+                                            onClick={() => handleDeleteOrder(order._id)}
+                                            className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all text-gray-500 hover:text-red-500"
+                                            title="Delete History"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </motion.div>
                         ))}

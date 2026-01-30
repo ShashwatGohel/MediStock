@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, MapPin, Store, Navigation, Package, AlertCircle, ShoppingBag } from "lucide-react";
 import { motion } from "framer-motion";
 import { getCurrentLocation } from "../utils/locationUtils";
+import OrderModal from "../components/OrderModal";
 
 const CategoryPage = () => {
     const { categoryName } = useParams();
@@ -11,6 +12,8 @@ const CategoryPage = () => {
     const [storeMedicines, setStoreMedicines] = useState([]);
     const [loading, setLoading] = useState(true);
     const [userLocation, setUserLocation] = useState(null);
+    const [selectedMedicine, setSelectedMedicine] = useState(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
 
     useEffect(() => {
         // Get location and then fetch data
@@ -31,7 +34,7 @@ const CategoryPage = () => {
     const fetchCategoryData = async (location, query = "") => {
         setLoading(true);
         try {
-            let url = `https://medistock-3a3y.onrender.com/api/medicines/category-search?category=${encodeURIComponent(categoryName)}`;
+            let url = `http://localhost:5000/api/medicines/category-search?category=${encodeURIComponent(categoryName)}`;
 
             if (query) {
                 url += `&search=${encodeURIComponent(query)}`;
@@ -120,11 +123,26 @@ const CategoryPage = () => {
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             key={item._id}
-                                            onClick={() => navigate(`/store/${item.storeId?._id}`)}
+                                            onClick={() => navigate(`/medicine/${encodeURIComponent(item.name)}`)}
                                             className="bg-[#121212] border border-white/5 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:border-white/10 hover:bg-white/5 transition-all group"
                                         >
                                             <div className="space-y-1">
-                                                <h3 className="font-bold text-white text-lg group-hover:text-indigo-400 transition-colors">{item.name}</h3>
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="font-bold text-white text-lg group-hover:text-indigo-400 transition-colors">{item.name}</h3>
+                                                    {item.quantity > 0 && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedMedicine(item);
+                                                                setShowOrderModal(true);
+                                                            }}
+                                                            className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-emerald-500/20 flex items-center gap-1.5"
+                                                        >
+                                                            <ShoppingBag className="w-3 h-3" />
+                                                            Order
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <div className="flex items-center gap-2 text-sm text-gray-400">
                                                     <span className="bg-white/5 px-2 py-0.5 rounded text-xs">{item.brand}</span>
                                                     <span>•</span>
@@ -151,6 +169,15 @@ const CategoryPage = () => {
                     </>
                 )}
             </div>
+
+            <OrderModal
+                isOpen={showOrderModal}
+                onClose={() => setShowOrderModal(false)}
+                medicine={selectedMedicine}
+                onOrderSuccess={() => {
+                    fetchCategoryData(userLocation, searchQuery);
+                }}
+            />
         </div>
     );
 };

@@ -43,14 +43,15 @@ const OwnerDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [medicinesLoading, setMedicinesLoading] = useState(true);
     const [statsLoading, setStatsLoading] = useState(true);
+    const [ordersLoading, setOrdersLoading] = useState(true);
+    const [orderSearchQuery, setOrderSearchQuery] = useState("");
     const [error, setError] = useState("");
     const [orders, setOrders] = useState([]);
-    const [ordersLoading, setOrdersLoading] = useState(false);
 
     const fetchLowStockMedicines = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/medicines/low-stock?threshold=10", {
+            const response = await fetch("http://localhost:5000/api/medicines/low-stock?threshold=10", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -70,7 +71,7 @@ const OwnerDashboard = () => {
         try {
             setMedicinesLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/medicines/my-medicines", {
+            const response = await fetch("http://localhost:5000/api/medicines/my-medicines", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -93,7 +94,7 @@ const OwnerDashboard = () => {
         try {
             setStatsLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/bills/daily-stats", {
+            const response = await fetch("http://localhost:5000/api/bills/daily-stats", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -114,7 +115,7 @@ const OwnerDashboard = () => {
             const user = JSON.parse(localStorage.getItem("user"));
             if (!user?._id) return;
             const token = localStorage.getItem("token");
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/${user._id}`, {
+            const response = await fetch("http://localhost:5000/api/stores/profile", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -128,7 +129,7 @@ const OwnerDashboard = () => {
             const pos = await getCurrentLocation();
             const addr = await getAddressFromCoords(pos.latitude, pos.longitude);
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/stores/location", {
+            const response = await fetch("http://localhost:5000/api/stores/location", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({ latitude: pos.latitude, longitude: pos.longitude, address: addr })
@@ -141,7 +142,7 @@ const OwnerDashboard = () => {
         try {
             setOrdersLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/orders/store-orders", {
+            const response = await fetch("http://localhost:5000/api/orders/store-orders", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -152,7 +153,7 @@ const OwnerDashboard = () => {
     const handleUpdateOrderStatus = async (orderId, status) => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/orders/${orderId}/status`, {
+            const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({ status })
@@ -161,15 +162,43 @@ const OwnerDashboard = () => {
                 fetchStoreOrders();
                 fetchAllMedicines();
                 fetchLowStockMedicines();
+                fetchDailyStats();
+            } else {
+                const data = await response.json();
+                alert(data.message || "Failed to update status");
             }
-        } catch (err) { alert("Failed to update status"); }
+        } catch (err) {
+            console.error(err);
+            alert("Network error. Failed to update status.");
+        }
+    };
+
+    const handleDeleteOrder = async (orderId) => {
+        if (!window.confirm("Delete this transaction record?")) return;
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+                method: "DELETE",
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            if (response.ok) {
+                fetchStoreOrders();
+                fetchDailyStats();
+            } else {
+                const data = await response.json();
+                alert(data.message || "Failed to delete order");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Error deleting order");
+        }
     };
 
     const handleDeleteMedicine = async (id) => {
         if (!window.confirm("Are you sure you want to delete this medicine?")) return;
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/medicines/delete/${id}`, {
+            const response = await fetch(`http://localhost:5000/api/medicines/delete/${id}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -245,15 +274,33 @@ const OwnerDashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-6">
                         <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
-                            <h2 className="text-xl font-bold text-white mb-4">Pending Requests</h2>
-                            <div className="space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                                <h2 className="text-xl font-bold text-white">Pending Requests</h2>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by customer name..."
+                                        value={orderSearchQuery}
+                                        onChange={(e) => setOrderSearchQuery(e.target.value)}
+                                        className="bg-white/5 border border-white/10 rounded-lg py-1.5 pl-9 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500/50 w-full sm:w-64"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                 {ordersLoading ? <Loader className="w-8 h-8 animate-spin mx-auto text-indigo-500" /> :
-                                    orders.length === 0 ? <p className="text-gray-500 text-center py-4">No active requests.</p> :
-                                        orders.map(order => (
+                                    orders.filter(o => o.userId?.name?.toLowerCase().includes(orderSearchQuery.toLowerCase())).length === 0 ? <p className="text-gray-500 text-center py-4">No matching requests.</p> :
+                                        orders.filter(o => o.userId?.name?.toLowerCase().includes(orderSearchQuery.toLowerCase())).map(order => (
                                             <div key={order._id} className="bg-white/5 border border-white/10 p-4 rounded-xl">
                                                 <div className="flex justify-between items-start mb-3">
                                                     <div><h4 className="font-bold text-white">{order.userId?.name}</h4><p className="text-xs text-gray-400">{order.userId?.phone}</p></div>
-                                                    <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${order.status === 'pending' ? 'text-yellow-500 bg-yellow-500/10' : 'text-emerald-500 bg-emerald-500/10'}`}>{order.status}</span>
+                                                    <span className={`text-[10px] px-2 py-1 rounded font-bold uppercase ${order.status === 'pending' ? 'text-yellow-500 bg-yellow-500/10' :
+                                                        order.status === 'confirmed' ? 'text-emerald-500 bg-emerald-500/10' :
+                                                            order.status === 'approved' ? 'text-blue-500 bg-blue-500/10' :
+                                                                'text-red-500 bg-red-500/10'
+                                                        }`}>
+                                                        {order.status === 'confirmed' ? 'Approved' : order.status}
+                                                    </span>
                                                 </div>
                                                 <div className="space-y-1 mb-4">
                                                     {order.items.map((it, idx) => <div key={idx} className="flex justify-between text-sm text-gray-300"><span>{it.medicineName} x {it.quantity}</span><span>₹{it.price * it.quantity}</span></div>)}
@@ -261,7 +308,8 @@ const OwnerDashboard = () => {
                                                 <div className="flex gap-2">
                                                     {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order._id, 'approved')} className="flex-1 bg-emerald-500 text-black py-2 rounded-lg font-bold text-sm">Approve</button>}
                                                     {order.status === 'approved' && <button onClick={() => handleUpdateOrderStatus(order._id, 'confirmed')} className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-bold text-sm">Confirm</button>}
-                                                    <button onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')} className="px-4 bg-white/5 border border-white/10 text-red-500 py-2 rounded-lg font-bold text-sm">Cancel</button>
+                                                    {(order.status === 'pending' || order.status === 'approved') && <button onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')} className="px-4 bg-white/5 border border-white/10 text-red-500 py-2 rounded-lg font-bold text-sm">Cancel</button>}
+                                                    {(order.status === 'confirmed' || order.status === 'cancelled') && <button onClick={() => handleDeleteOrder(order._id)} className="flex-1 bg-white/5 border border-white/10 text-gray-500 hover:text-red-500 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /> Delete</button>}
                                                 </div>
                                             </div>
                                         ))}
@@ -269,30 +317,37 @@ const OwnerDashboard = () => {
                         </div>
 
                         <div className="bg-[#121212] border border-white/5 rounded-2xl p-6">
-                            <h2 className="text-xl font-bold text-white mb-4">Inventory</h2>
-                            <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
-                                {medicinesLoading ? <Loader className="w-8 h-8 animate-spin mx-auto" /> :
-                                    filteredMedicines.map(med => (
-                                        <div key={med._id} className="p-3 bg-white/5 rounded-lg border border-white/5 flex justify-between items-center group">
-                                            <div>
-                                                <h4 className="text-sm font-semibold text-white">{med.name}</h4>
-                                                <p className="text-xs text-gray-400">{med.brand} • {med.category}</p>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-right">
-                                                    <p className="font-bold text-white">{med.quantity} <span className="text-gray-500 text-xs">units</span></p>
-                                                    <p className="text-xs text-gray-400">₹{med.price}</p>
-                                                </div>
+                            <h2 className="text-xl font-bold text-white mb-6">Inventory</h2>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 max-h-[600px] overflow-y-auto p-1 custom-scrollbar">
+                                {medicinesLoading ? <div className="col-span-full py-10"><Loader className="w-8 h-8 animate-spin mx-auto text-indigo-500" /></div> :
+                                    filteredMedicines.length === 0 ? <p className="col-span-full text-gray-500 text-center py-4">No medicines in stock.</p> :
+                                        filteredMedicines.map(med => (
+                                            <div key={med._id} className="relative p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col justify-between hover:bg-white/10 hover:border-indigo-500/30 transition-all group aspect-square">
                                                 <button
                                                     onClick={() => handleDeleteMedicine(med._id)}
-                                                    className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                                                    className="absolute top-2 right-2 p-1.5 text-gray-500 hover:text-red-500 bg-black/20 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
                                                     title="Delete Medicine"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
+
+                                                <div className="space-y-1 mt-2">
+                                                    <h4 className="font-bold text-white text-sm line-clamp-2 leading-tight">{med.name}</h4>
+                                                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{med.category}</p>
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] text-gray-400">Stock</span>
+                                                        <span className={`font-bold text-sm ${med.quantity <= 10 ? 'text-orange-400' : 'text-emerald-400'}`}>{med.quantity}</span>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-[10px] text-gray-400">Price</span>
+                                                        <span className="font-bold text-white text-sm">₹{med.price}</span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))}
                             </div>
                         </div>
                     </div>
@@ -325,7 +380,7 @@ const OwnerDashboard = () => {
                 </div>
             </div>
 
-            <AddMedicineModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); }} />
+            <AddMedicineModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
             <CreateBillModal isOpen={isBillModalOpen} onClose={() => setIsBillModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
         </div>
     );

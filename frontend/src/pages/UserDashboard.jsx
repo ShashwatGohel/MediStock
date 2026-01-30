@@ -4,9 +4,10 @@ import {
     Search, MapPin, Bell, User, History, Upload, FileText,
     Navigation, Filter, HeartPulse, ChevronRight, Star, Clock,
     AlertCircle, Phone, Activity, Sparkles, Thermometer, Pill,
-    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff, X
+    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff, X, PlusCircle, Settings, Heart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import OrderModal from "../components/OrderModal";
 import RangeSlider from "../components/RangeSlider";
 import StoreCard from "../components/StoreCard";
 import { getCurrentLocation, saveLocation, getSavedLocation, getAddressFromCoords } from "../utils/locationUtils";
@@ -32,6 +33,8 @@ const RecenterMap = ({ position }) => {
 
 const UserDashboard = () => {
     const navigate = useNavigate();
+    const [selectedMedicine, setSelectedMedicine] = useState(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
     const resultsRef = useRef(null);
     const [selectedStore, setSelectedStore] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
@@ -116,7 +119,7 @@ const UserDashboard = () => {
         try {
             setLoadingOrders(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/orders/user-orders", {
+            const response = await fetch("http://localhost:5000/api/orders/user-orders", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -133,7 +136,7 @@ const UserDashboard = () => {
     const fetchSavedStores = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/stores/saved", {
+            const response = await fetch("http://localhost:5000/api/stores/saved", {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -148,7 +151,7 @@ const UserDashboard = () => {
     const handleToggleSave = async (storeId) => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/toggle-save/${storeId}`, {
+            const response = await fetch(`http://localhost:5000/api/stores/toggle-save/${storeId}`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -185,7 +188,7 @@ const UserDashboard = () => {
         try {
             setLoadingStores(true);
             const response = await fetch(
-                `https://medistock-3a3y.onrender.com/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
+                `http://localhost:5000/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
             );
             const data = await response.json();
             if (data.success) {
@@ -210,7 +213,7 @@ const UserDashboard = () => {
         try {
             setLoadingStores(true);
             const response = await fetch(
-                `https://medistock-3a3y.onrender.com/api/stores/search?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}&medicine=${encodeURIComponent(searchQuery)}`
+                `http://localhost:5000/api/stores/search?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}&medicine=${encodeURIComponent(searchQuery)}`
             );
             const data = await response.json();
             if (data.success) {
@@ -434,30 +437,32 @@ const UserDashboard = () => {
                     <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
                 </motion.div>
 
-                {/* 🛍️ Shop by Category */}
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                >
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-white">Shop by Category</h2>
-                    </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                        {categories.map((cat, idx) => (
-                            <button
-                                key={idx}
-                                onClick={() => handleCategoryClick(cat.name)}
-                                className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all group"
-                            >
-                                <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                                    <cat.icon className={`w-6 h-6 ${cat.color}`} />
-                                </div>
-                                <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{cat.name}</span>
-                            </button>
-                        ))}
-                    </div>
-                </motion.div>
+                {/* 🏷️ Shop by Category */}
+                <div id="categories-section" className="space-y-6">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.3 }}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-white">Shop by Category</h2>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                            {categories.map((cat, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => handleCategoryClick(cat.name)}
+                                    className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl bg-[#121212] border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all group"
+                                >
+                                    <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                        <cat.icon className={`w-6 h-6 ${cat.color}`} />
+                                    </div>
+                                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors">{cat.name}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                </div>
 
                 {/* ⚡ Quick Actions (Already Implemented) & Nearby Stores */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -473,10 +478,10 @@ const UserDashboard = () => {
                         </h2>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {[
-                                { icon: Upload, label: "Upload Rx", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", onClick: () => setShowPrescriptionModal(true) },
-                                { icon: FileText, label: "My Orders", color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20", onClick: () => navigate("/my-orders") },
-                                { icon: Star, label: "Saved Stores", color: "text-yellow-400", bg: "bg-yellow-400/10", border: "border-yellow-400/20", onClick: () => navigate("/saved-stores") },
-                                { icon: Navigation, label: "Map View", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", onClick: () => setShowMap(true) }
+                                { icon: Activity, label: "Order Track", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", onClick: () => document.getElementById('my-orders-section')?.scrollIntoView({ behavior: 'smooth' }) },
+                                { icon: PlusCircle, label: "Shop Now", color: "text-indigo-400", bg: "bg-indigo-400/10", border: "border-indigo-400/20", onClick: () => document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' }) },
+                                { icon: Heart, label: "Favorites", color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/20", onClick: () => { } },
+                                { icon: Navigation, label: "Map View", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", onClick: () => setShowMap(true) }
                             ].map((action, i) => (
                                 <button
                                     key={i}
@@ -547,6 +552,10 @@ const UserDashboard = () => {
                                         }}
                                         index={index}
                                         onClick={() => handleStoreClick(store.id)}
+                                        onOrderClick={(med) => {
+                                            setSelectedMedicine(med);
+                                            setShowOrderModal(true);
+                                        }}
                                     />
                                 ))
                             )}

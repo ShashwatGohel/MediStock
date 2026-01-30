@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
     MapPin, Phone, Mail, Clock, Package, Search, ArrowLeft,
     Navigation, Building2, Tag, DollarSign, AlertCircle, Loader,
-    ShieldCheck, Star, ChevronRight
+    ShieldCheck, Star, ChevronRight, ShoppingBag
 } from "lucide-react";
 import { motion } from "framer-motion";
+import OrderModal from "../components/OrderModal";
 
 const StoreDetail = () => {
     const { storeId } = useParams();
@@ -19,6 +20,8 @@ const StoreDetail = () => {
     const [medicinesLoading, setMedicinesLoading] = useState(true);
     const [error, setError] = useState("");
     const [userLocation, setUserLocation] = useState(null);
+    const [selectedMedicine, setSelectedMedicine] = useState(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
 
     useEffect(() => {
         // Get user location from localStorage
@@ -29,12 +32,25 @@ const StoreDetail = () => {
 
         fetchStoreDetails();
         fetchStoreMedicines();
+        recordVisit();
     }, [storeId]);
+
+    const recordVisit = async () => {
+        try {
+            await fetch("http://localhost:5000/api/bills/increment-visit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ storeId })
+            });
+        } catch (err) {
+            console.error("Error recording visit:", err);
+        }
+    };
 
     const fetchStoreDetails = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/${storeId}`);
+            const response = await fetch(`http://localhost:5000/api/stores/${storeId}`);
             const data = await response.json();
 
             if (data.success) {
@@ -53,7 +69,7 @@ const StoreDetail = () => {
     const fetchStoreMedicines = async () => {
         try {
             setMedicinesLoading(true);
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/${storeId}/medicines`);
+            const response = await fetch(`http://localhost:5000/api/stores/${storeId}/medicines`);
             const data = await response.json();
 
             if (data.success) {
@@ -264,9 +280,24 @@ const StoreDetail = () => {
                                     >
                                         <div className="flex items-start justify-between">
                                             <div className="flex-1">
-                                                <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                                                    {medicine.name}
-                                                </h3>
+                                                <div className="flex items-center gap-3">
+                                                    <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors">
+                                                        {medicine.name}
+                                                    </h3>
+                                                    {medicine.quantity > 0 && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedMedicine({ ...medicine, storeId: { _id: storeId, storeName: store.name } });
+                                                                setShowOrderModal(true);
+                                                            }}
+                                                            className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-emerald-500/20 flex items-center gap-1.5"
+                                                        >
+                                                            <ShoppingBag className="w-3 h-3" />
+                                                            Order Now
+                                                        </button>
+                                                    )}
+                                                </div>
                                                 <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-400">
                                                     {medicine.brand && (
                                                         <span className="flex items-center gap-1">
@@ -308,6 +339,15 @@ const StoreDetail = () => {
                     </motion.div>
                 </div>
             </div>
+
+            <OrderModal
+                isOpen={showOrderModal}
+                onClose={() => setShowOrderModal(false)}
+                medicine={selectedMedicine}
+                onOrderSuccess={() => {
+                    fetchStoreMedicines();
+                }}
+            />
 
             <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
