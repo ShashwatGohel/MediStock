@@ -11,6 +11,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import AddMedicineModal from "../components/AddMedicineModal";
 import BulkUploadModal from "../components/BulkUploadModal";
 import CreateBillModal from "../components/CreateBillModal";
+import MedicineDetailModal from "../components/MedicineDetailModal";
+import BillsModal from "../components/BillsModal";
+import OrdersModal from "../components/OrdersModal";
+import LowStockModal from "../components/LowStockModal";
+import VisitsModal from "../components/VisitsModal";
 import { getCurrentLocation, getAddressFromCoords } from "../utils/locationUtils";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -38,6 +43,12 @@ const OwnerDashboard = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [selectedMedicine, setSelectedMedicine] = useState(null);
+    const [isBillsModalOpen, setIsBillsModalOpen] = useState(false);
+    const [isOrdersModalOpen, setIsOrdersModalOpen] = useState(false);
+    const [isLowStockModalOpen, setIsLowStockModalOpen] = useState(false);
+    const [isVisitsModalOpen, setIsVisitsModalOpen] = useState(false);
     const [stockAlerts, setStockAlerts] = useState([]);
     const [allMedicines, setAllMedicines] = useState([]);
     const [filteredMedicines, setFilteredMedicines] = useState([]);
@@ -263,16 +274,29 @@ const OwnerDashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {stats.map((stat, i) => (
-                        <div key={i} className="bg-[#121212] border border-white/5 p-5 rounded-2xl">
-                            <div className="flex justify-between mb-4">
-                                <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon className="w-6 h-6" /></div>
-                                <span className={`text-xs font-bold ${stat.isPositive ? "text-green-400" : "text-red-400"}`}>{stat.change}</span>
+                    {stats.map((stat, i) => {
+                        const handleClick = () => {
+                            if (stat.title === "Total Sales") setIsBillsModalOpen(true);
+                            else if (stat.title === "Orders Today") setIsOrdersModalOpen(true);
+                            else if (stat.title === "Low Stock") setIsLowStockModalOpen(true);
+                            else if (stat.title === "Profile Visits") setIsVisitsModalOpen(true);
+                        };
+
+                        return (
+                            <div
+                                key={i}
+                                onClick={handleClick}
+                                className="bg-[#121212] border border-white/5 p-5 rounded-2xl cursor-pointer hover:bg-white/5 hover:border-indigo-500/30 transition-all"
+                            >
+                                <div className="flex justify-between mb-4">
+                                    <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon className="w-6 h-6" /></div>
+                                    <span className={`text-xs font-bold ${stat.isPositive ? "text-green-400" : "text-red-400"}`}>{stat.change}</span>
+                                </div>
+                                <h3 className="text-gray-400 text-sm">{stat.title}</h3>
+                                <p className="text-2xl font-bold text-white">{stat.value}</p>
                             </div>
-                            <h3 className="text-gray-400 text-sm">{stat.title}</h3>
-                            <p className="text-2xl font-bold text-white">{stat.value}</p>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -326,7 +350,11 @@ const OwnerDashboard = () => {
                                 {medicinesLoading ? <div className="col-span-full py-10"><Loader className="w-8 h-8 animate-spin mx-auto text-indigo-500" /></div> :
                                     filteredMedicines.length === 0 ? <p className="col-span-full text-gray-500 text-center py-4">No medicines in stock.</p> :
                                         filteredMedicines.map(med => (
-                                            <div key={med._id} className="relative p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col justify-between hover:bg-white/10 hover:border-indigo-500/30 transition-all group aspect-square">
+                                            <div
+                                                key={med._id}
+                                                onClick={() => { setSelectedMedicine(med); setIsDetailModalOpen(true); }}
+                                                className="relative p-4 bg-white/5 rounded-xl border border-white/5 flex flex-col justify-between hover:bg-white/10 hover:border-indigo-500/30 cursor-pointer transition-all group aspect-square"
+                                            >
                                                 <button
                                                     onClick={() => handleDeleteMedicine(med._id)}
                                                     className="absolute top-2 right-2 p-1.5 text-gray-500 hover:text-red-500 bg-black/20 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 z-10"
@@ -387,6 +415,21 @@ const OwnerDashboard = () => {
             <AddMedicineModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
             <BulkUploadModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
             <CreateBillModal isOpen={isBillModalOpen} onClose={() => setIsBillModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
+            <MedicineDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                medicine={selectedMedicine}
+                onSuccess={() => {
+                    setIsDetailModalOpen(false);
+                    fetchAllMedicines();
+                    fetchLowStockMedicines();
+                    fetchDailyStats();
+                }}
+            />
+            <BillsModal isOpen={isBillsModalOpen} onClose={() => setIsBillsModalOpen(false)} />
+            <OrdersModal isOpen={isOrdersModalOpen} onClose={() => setIsOrdersModalOpen(false)} />
+            <LowStockModal isOpen={isLowStockModalOpen} onClose={() => setIsLowStockModalOpen(false)} lowStockMedicines={stockAlerts} />
+            <VisitsModal isOpen={isVisitsModalOpen} onClose={() => setIsVisitsModalOpen(false)} />
         </div>
     );
 };

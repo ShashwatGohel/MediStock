@@ -11,6 +11,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
         quantity: "",
         price: "",
         expiryDate: "",
+        description: "",
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -113,6 +114,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                     quantity: "",
                     price: "",
                     expiryDate: "",
+                    description: "",
                 });
 
                 // Call success callback
@@ -315,6 +317,21 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                                         value={formData.expiryDate}
                                         onChange={handleChange}
                                         className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50 transition-all"
+                                    />
+                                </div>
+
+                                {/* Description */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
+                                        <div className="w-4 h-4 text-gray-400 rotate-180 flex items-center justify-center font-serif text-xs border border-gray-400 rounded-full">i</div>
+                                        Description
+                                    </label>
+                                    <textarea
+                                        name="description"
+                                        value={formData.description}
+                                        onChange={handleChange}
+                                        placeholder="Enter medicine description, dosage info..."
+                                        className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-indigo-500/50 transition-all h-24 resize-none"
                                     />
                                 </div>
 
