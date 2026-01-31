@@ -3,6 +3,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { User, Store, ArrowRight, Pill, Stethoscope, Building2 } from "lucide-react";
 
+import { API_URLS } from "../api";
+
 const Login = () => {
   const navigate = useNavigate();
   const [role, setRole] = useState("user"); // 'user' or 'store'
@@ -16,7 +18,7 @@ const Login = () => {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(`${API_URLS.AUTH}/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

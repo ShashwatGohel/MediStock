@@ -7,6 +7,7 @@ import {
 import { motion } from "framer-motion";
 import { getCurrentLocation } from "../utils/locationUtils";
 import OrderModal from "../components/OrderModal";
+import { API_URLS } from "../api";
 
 const MedicineSearch = () => {
     const { medicineName } = useParams();
@@ -44,7 +45,7 @@ const MedicineSearch = () => {
     const fetchStoresForMedicine = async (location) => {
         setLoading(true);
         try {
-            let url = `http://localhost:5000/api/stores/search?medicine=${encodeURIComponent(medicineName)}&radius=50`;
+            let url = `${API_URLS.STORES}/search?medicine=${encodeURIComponent(medicineName)}&radius=50`;
 
             if (location) {
                 url += `&lat=${location.latitude}&lng=${location.longitude}`;

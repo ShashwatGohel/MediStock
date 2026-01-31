@@ -14,6 +14,7 @@ import { getCurrentLocation, getAddressFromCoords } from "../utils/locationUtils
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { ownerIcon } from "../utils/MapMarkerIcons";
+import { API_URLS } from "../api";
 
 const RecenterMap = ({ position }) => {
     const map = useMap();
@@ -51,7 +52,7 @@ const OwnerDashboard = () => {
     const fetchLowStockMedicines = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/medicines/low-stock?threshold=10", {
+            const response = await fetch(`${API_URLS.MEDICINES}/low-stock?threshold=10`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -71,7 +72,7 @@ const OwnerDashboard = () => {
         try {
             setMedicinesLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/medicines/my-medicines", {
+            const response = await fetch(`${API_URLS.MEDICINES}/my-medicines`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -94,7 +95,7 @@ const OwnerDashboard = () => {
         try {
             setStatsLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/bills/daily-stats", {
+            const response = await fetch(`${API_URLS.BILLS}/daily-stats`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -115,7 +116,7 @@ const OwnerDashboard = () => {
             const user = JSON.parse(localStorage.getItem("user"));
             if (!user?._id) return;
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/stores/profile", {
+            const response = await fetch(`${API_URLS.STORES}/profile`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -129,7 +130,7 @@ const OwnerDashboard = () => {
             const pos = await getCurrentLocation();
             const addr = await getAddressFromCoords(pos.latitude, pos.longitude);
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/stores/location", {
+            const response = await fetch(`${API_URLS.STORES}/location`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({ latitude: pos.latitude, longitude: pos.longitude, address: addr })
@@ -142,7 +143,7 @@ const OwnerDashboard = () => {
         try {
             setOrdersLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/orders/store-orders", {
+            const response = await fetch(`${API_URLS.ORDERS}/store-orders`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -153,7 +154,7 @@ const OwnerDashboard = () => {
     const handleUpdateOrderStatus = async (orderId, status) => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:5000/api/orders/${orderId}/status`, {
+            const response = await fetch(`${API_URLS.ORDERS}/${orderId}/status`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
                 body: JSON.stringify({ status })
@@ -177,7 +178,7 @@ const OwnerDashboard = () => {
         if (!window.confirm("Delete this transaction record?")) return;
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            const response = await fetch(`${API_URLS.ORDERS}/${orderId}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -198,7 +199,7 @@ const OwnerDashboard = () => {
         if (!window.confirm("Are you sure you want to delete this medicine?")) return;
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:5000/api/medicines/delete/${id}`, {
+            const response = await fetch(`${API_URLS.MEDICINES}/delete/${id}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });

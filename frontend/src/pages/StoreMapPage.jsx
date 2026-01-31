@@ -10,6 +10,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { userIcon, storeIcon } from "../utils/MapMarkerIcons";
 import RangeSlider from "../components/RangeSlider";
+import { API_URLS } from "../api";
 
 const RecenterMap = ({ position }) => {
     const map = useMap();
@@ -46,7 +47,7 @@ const StoreMapPage = () => {
         setLoading(true);
         try {
             const response = await fetch(
-                `http://localhost:5000/api/stores/nearby?lat=${loc.latitude}&lng=${loc.longitude}&radius=${radius}`
+                `${API_URLS.STORES}/nearby?lat=${loc.latitude}&lng=${loc.longitude}&radius=${radius}`
             );
             const data = await response.json();
             if (data.success) {
@@ -124,8 +125,8 @@ const StoreMapPage = () => {
                                 key={store.id}
                                 onClick={() => setSelectedStore(store)}
                                 className={`w-full p-4 rounded-2xl border transition-all text-left group ${selectedStore?.id === store.id
-                                        ? 'bg-blue-500/10 border-blue-500/30'
-                                        : 'bg-white/[0.02] border-white/5 hover:border-white/20'
+                                    ? 'bg-blue-500/10 border-blue-500/30'
+                                    : 'bg-white/[0.02] border-white/5 hover:border-white/20'
                                     }`}
                             >
                                 <div className="flex justify-between items-start mb-2">

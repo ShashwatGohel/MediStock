@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Trash2, Receipt, DollarSign, User, Phone, CreditCard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URLS } from "../api";
 
 const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
     const [medicines, setMedicines] = useState([]);
@@ -20,7 +21,7 @@ const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
     const fetchMedicines = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/medicines/my-medicines", {
+            const response = await fetch(`${API_URLS.MEDICINES}/my-medicines`, {
                 headers: {
                     "Authorization": `Bearer ${token}`
                 }
@@ -94,7 +95,7 @@ const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
         try {
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://localhost:5000/api/bills/create", {
+            const response = await fetch(`${API_URLS.BILLS}/create`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

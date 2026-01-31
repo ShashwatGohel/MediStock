@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Package, DollarSign, Calendar, Tag, Pill, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URLS } from "../api";
 
 const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -39,7 +40,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
 
         try {
             setSearchingCatalog(true);
-            const response = await fetch(`http://localhost:5000/api/medicines/catalog?search=${encodeURIComponent(query)}`);
+            const response = await fetch(`${API_URLS.MEDICINES}/catalog?search=${encodeURIComponent(query)}`);
             const data = await response.json();
             if (data.success) {
                 setCatalogResults(data.catalog);
@@ -88,7 +89,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
         try {
             const token = localStorage.getItem("token");
 
-            const response = await fetch("http://localhost:5000/api/medicines/add", {
+            const response = await fetch(`${API_URLS.MEDICINES}/add`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

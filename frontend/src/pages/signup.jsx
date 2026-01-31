@@ -3,6 +3,7 @@ import { useState } from "react";
 import { User, Building2, ArrowRight, FileText, MapPin, Phone, Mail, Lock, Store as StoreIcon, CheckCircle2, Loader, Navigation } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getCurrentLocation } from "../utils/locationUtils";
+import { API_URLS } from "../api";
 
 const Signup = () => {
     const navigate = useNavigate();
@@ -102,7 +103,7 @@ const Signup = () => {
         }
 
         try {
-            const response = await fetch("http://localhost:5000/api/auth/signup", {
+            const response = await fetch(`${API_URLS.AUTH}/signup`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -117,7 +118,6 @@ const Signup = () => {
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("role", data.role);
                 localStorage.setItem("user", JSON.stringify(data.user));
-                localStorage.setItem("isLoggedIn", "true");
                 localStorage.setItem("isLoggedIn", "true");
 
                 if (data.role === "store") {

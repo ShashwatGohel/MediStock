@@ -4,6 +4,7 @@ import { ArrowLeft, Search, MapPin, Store, Navigation, Package, AlertCircle, Sho
 import { motion } from "framer-motion";
 import { getCurrentLocation } from "../utils/locationUtils";
 import OrderModal from "../components/OrderModal";
+import { API_URLS } from "../api";
 
 const CategoryPage = () => {
     const { categoryName } = useParams();
@@ -34,7 +35,7 @@ const CategoryPage = () => {
     const fetchCategoryData = async (location, query = "") => {
         setLoading(true);
         try {
-            let url = `http://localhost:5000/api/medicines/category-search?category=${encodeURIComponent(categoryName)}`;
+            let url = `${API_URLS.MEDICINES}/category-search?category=${encodeURIComponent(categoryName)}`;
 
             if (query) {
                 url += `&search=${encodeURIComponent(query)}`;

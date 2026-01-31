@@ -15,7 +15,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { userIcon, storeIcon } from "../utils/MapMarkerIcons";
 import PrescriptionModal from "../components/PrescriptionModal";
-import LocationMarker from "../components/LocationMarker";
+import { API_URLS } from "../api";
 
 // Helper component to update map view when location changes
 const RecenterMap = ({ position }) => {
@@ -121,7 +121,7 @@ const UserDashboard = () => {
         try {
             setLoadingOrders(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/orders/user-orders", {
+            const response = await fetch(`${API_URLS.ORDERS}/user-orders`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -138,7 +138,7 @@ const UserDashboard = () => {
     const fetchSavedStores = async () => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/stores/saved", {
+            const response = await fetch(`${API_URLS.STORES}/saved`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -153,7 +153,7 @@ const UserDashboard = () => {
     const handleToggleSave = async (storeId) => {
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:5000/api/stores/toggle-save/${storeId}`, {
+            const response = await fetch(`${API_URLS.STORES}/toggle-save/${storeId}`, {
                 method: "POST",
                 headers: { "Authorization": `Bearer ${token}` }
             });
@@ -190,7 +190,7 @@ const UserDashboard = () => {
         try {
             setLoadingStores(true);
             const response = await fetch(
-                `http://localhost:5000/api/stores/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
+                `${API_URLS.STORES}/nearby?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}`
             );
             const data = await response.json();
             if (data.success) {
@@ -215,7 +215,7 @@ const UserDashboard = () => {
         try {
             setLoadingStores(true);
             const response = await fetch(
-                `http://localhost:5000/api/stores/search?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}&medicine=${encodeURIComponent(searchQuery)}`
+                `${API_URLS.STORES}/search?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=${searchRadius}&medicine=${encodeURIComponent(searchQuery)}`
             );
             const data = await response.json();
             if (data.success) {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { X, Upload, Search, Pill, Store, Loader, CheckCircle2, AlertCircle, FileText } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URLS } from "../api";
 
 const PrescriptionModal = ({ isOpen, onClose, userLocation }) => {
     const [step, setStep] = useState(1);
@@ -24,7 +25,7 @@ const PrescriptionModal = ({ isOpen, onClose, userLocation }) => {
         setLoading(true);
         try {
             // Find stores that have this medicine
-            const response = await fetch(`http://localhost:5000/api/stores/search?medicine=${encodeURIComponent(searchQuery)}&lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`);
+            const response = await fetch(`${API_URLS.STORES}/search?medicine=${encodeURIComponent(searchQuery)}&lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`);
             const data = await response.json();
             if (data.success) {
                 setFoundStores(data.stores);
@@ -40,7 +41,7 @@ const PrescriptionModal = ({ isOpen, onClose, userLocation }) => {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/orders/request", {
+            const response = await fetch(`${API_URLS.ORDERS}/request`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

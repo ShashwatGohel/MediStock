@@ -28,8 +28,8 @@ initCleanupTask();
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:5173" ||
-  "https://medi-stock-shashwat-gohel-s-projects.vercel.app" ||
+  "http://localhost:5173",
+  "https://medi-stock-shashwat-gohel-s-projects.vercel.app",
   "https://medi-stock-theta.vercel.app"
 ];
 
@@ -37,7 +37,7 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin) || origin.includes("vercel.app")) {
+    if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
       return callback(null, true);
     }
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, X, Package, AlertCircle, CheckCircle2, Loader } from "lucide-react";
+import { API_URLS } from "../api";
 
 const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
     const [quantity, setQuantity] = useState(1);
@@ -17,7 +18,7 @@ const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
 
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/orders/request", {
+            const response = await fetch(`${API_URLS.ORDERS}/request`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

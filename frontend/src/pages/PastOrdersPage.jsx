@@ -6,6 +6,7 @@ import {
     XCircle, AlertCircle, Phone, Loader, Trash2, ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { API_URLS } from "../api";
 
 const PastOrdersPage = () => {
     const navigate = useNavigate();
@@ -22,7 +23,7 @@ const PastOrdersPage = () => {
         try {
             setLoading(true);
             const token = localStorage.getItem("token");
-            const response = await fetch("http://localhost:5000/api/orders/user-orders", {
+            const response = await fetch(`${API_URLS.ORDERS}/user-orders`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             const data = await response.json();
@@ -40,7 +41,7 @@ const PastOrdersPage = () => {
         if (!window.confirm("Delete this order from history?")) return;
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch(`http://localhost:5000/api/orders/${orderId}`, {
+            const response = await fetch(`${API_URLS.ORDERS}/${orderId}`, {
                 method: "DELETE",
                 headers: { "Authorization": `Bearer ${token}` }
             });
