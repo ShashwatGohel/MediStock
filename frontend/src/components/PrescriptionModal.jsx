@@ -24,7 +24,7 @@ const PrescriptionModal = ({ isOpen, onClose, userLocation }) => {
         setLoading(true);
         try {
             // Find stores that have this medicine
-            const response = await fetch(`https://medistock-3a3y.onrender.com/api/stores/search?medicine=${encodeURIComponent(searchQuery)}&lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`);
+            const response = await fetch(`http://localhost:5000/api/stores/search?medicine=${encodeURIComponent(searchQuery)}&lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`);
             const data = await response.json();
             if (data.success) {
                 setFoundStores(data.stores);
@@ -40,7 +40,7 @@ const PrescriptionModal = ({ isOpen, onClose, userLocation }) => {
         setLoading(true);
         try {
             const token = localStorage.getItem("token");
-            const response = await fetch("https://medistock-3a3y.onrender.com/api/orders/request", {
+            const response = await fetch("http://localhost:5000/api/orders/request", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

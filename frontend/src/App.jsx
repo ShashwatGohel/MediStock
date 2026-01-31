@@ -10,6 +10,9 @@ import SavedStores from "./pages/SavedStores";
 import NotFound from "./pages/NotFound";
 import CategoryPage from "./pages/CategoryPage";
 import MedicineSearch from "./pages/MedicineSearch";
+import UploadPrescriptionPage from "./pages/UploadPrescriptionPage";
+import StoreMapPage from "./pages/StoreMapPage";
+import PastOrdersPage from "./pages/PastOrdersPage";
 
 function App() {
   return (
@@ -24,6 +27,9 @@ function App() {
         <Route path="/store/:storeId" element={<StoreDetail />} />
         <Route path="/my-orders" element={<MyOrders />} />
         <Route path="/saved-stores" element={<SavedStores />} />
+        <Route path="/past-orders" element={<PastOrdersPage />} />
+        <Route path="/upload-rx" element={<UploadPrescriptionPage />} />
+        <Route path="/map-view" element={<StoreMapPage />} />
         <Route path="/category/:categoryName" element={<CategoryPage />} />
         <Route path="/medicine/:medicineName" element={<MedicineSearch />} />
         <Route path="*" element={<NotFound />} />

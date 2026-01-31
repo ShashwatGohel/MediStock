@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
     Search, MapPin, Bell, User, History, Upload, FileText,
     Navigation, Filter, HeartPulse, ChevronRight, Star, Clock,
@@ -55,6 +55,8 @@ const UserDashboard = () => {
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [savedStoreIds, setSavedStoreIds] = useState([]);
+
+    const location = useLocation();
 
     useEffect(() => {
         const userData = localStorage.getItem("user");
@@ -476,16 +478,17 @@ const UserDashboard = () => {
                         <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                             Quick Actions
                         </h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                             {[
-                                { icon: Activity, label: "Order Track", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20", onClick: () => document.getElementById('my-orders-section')?.scrollIntoView({ behavior: 'smooth' }) },
-                                { icon: PlusCircle, label: "Shop Now", color: "text-indigo-400", bg: "bg-indigo-400/10", border: "border-indigo-400/20", onClick: () => document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' }) },
-                                { icon: Heart, label: "Favorites", color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/20", onClick: () => { } },
-                                { icon: Navigation, label: "Map View", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20", onClick: () => setShowMap(true) }
+                                { icon: Upload, label: "Upload Rx", path: "/upload-rx", color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" },
+                                { icon: History, label: "Past Orders", path: "/past-orders", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
+                                { icon: PlusCircle, label: "Shop Now", onClick: () => document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' }), color: "text-indigo-400", bg: "bg-indigo-400/10", border: "border-indigo-400/20" },
+                                { icon: Heart, label: "Favorites", path: "/saved-stores", color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/20" },
+                                { icon: Navigation, label: "Map View", path: "/map-view", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" }
                             ].map((action, i) => (
                                 <button
                                     key={i}
-                                    onClick={action.onClick}
+                                    onClick={action.path ? () => navigate(action.path) : action.onClick}
                                     className={`flex-col items-center justify-center gap-3 p-6 rounded-2xl border ${action.border} ${action.bg} hover:bg-opacity-20 transition-all hover:-translate-y-1 group flex`}
                                 >
                                     <action.icon className={`w-8 h-8 ${action.color} group-hover:scale-110 transition-transform`} />
