@@ -5,10 +5,11 @@ import {
     Settings, LogOut, Moon, Sun, Search, Plus, FileText,
     Truck, DollarSign, Users, Eye, ShieldCheck, HelpCircle,
     ChevronRight, ArrowUpRight, ArrowDownRight, Bell, Store, Clock,
-    Building2, Tag, Trash2, Navigation, MapPinOff, Loader, Map
+    Building2, Tag, Trash2, Navigation, MapPinOff, Loader, Map, Table
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import AddMedicineModal from "../components/AddMedicineModal";
+import BulkUploadModal from "../components/BulkUploadModal";
 import CreateBillModal from "../components/CreateBillModal";
 import { getCurrentLocation, getAddressFromCoords } from "../utils/locationUtils";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
@@ -35,6 +36,7 @@ const OwnerDashboard = () => {
     const [locationLoading, setLocationLoading] = useState(false);
     const [ownerName, setOwnerName] = useState("Partner");
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [isBillModalOpen, setIsBillModalOpen] = useState(false);
     const [stockAlerts, setStockAlerts] = useState([]);
     const [allMedicines, setAllMedicines] = useState([]);
@@ -255,6 +257,7 @@ const OwnerDashboard = () => {
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setIsBillModalOpen(true)} className="px-4 py-2 bg-green-500 text-white rounded-lg font-bold flex items-center gap-2"><FileText className="w-4 h-4" /> Bill</button>
+                        <button onClick={() => setIsBulkModalOpen(true)} className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg font-bold flex items-center gap-2 hover:bg-white/10 transition-all"><Table className="w-4 h-4 text-indigo-400" /> Bulk</button>
                         <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-bold flex items-center gap-2"><Plus className="w-4 h-4" /> Medicine</button>
                     </div>
                 </div>
@@ -382,6 +385,7 @@ const OwnerDashboard = () => {
             </div>
 
             <AddMedicineModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
+            <BulkUploadModal isOpen={isBulkModalOpen} onClose={() => setIsBulkModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
             <CreateBillModal isOpen={isBillModalOpen} onClose={() => setIsBillModalOpen(false)} onSuccess={() => { fetchAllMedicines(); fetchLowStockMedicines(); fetchDailyStats(); }} />
         </div>
     );
