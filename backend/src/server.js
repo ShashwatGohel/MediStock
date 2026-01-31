@@ -28,8 +28,8 @@ initCleanupTask();
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:5173",
-  "https://medi-stock-shashwat-gohel-s-projects.vercel.app",
+  "http://localhost:5173" ||
+  "https://medi-stock-shashwat-gohel-s-projects.vercel.app" ||
   "https://medi-stock-theta.vercel.app"
 ];
 
