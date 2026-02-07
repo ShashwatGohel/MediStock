@@ -168,13 +168,18 @@ const OwnerDashboard = () => {
             });
             const data = await response.json();
             if (data.success) {
-                const { totalSales, salesChange, ordersToday, ordersChange, lowStockCount, profileVisits, visitsChange } = data.stats;
+                const { totalSales, salesChange, ordersToday, ordersChange, lowStockCount, profileVisits, visitsChange, performance } = data.stats;
+
                 setStats([
                     { title: "Total Sales", value: `₹${totalSales.toLocaleString()}`, change: `${salesChange >= 0 ? '+' : ''}${salesChange}%`, isPositive: salesChange >= 0, icon: DollarSign, color: "text-emerald-400", bg: "bg-emerald-500/10" },
                     { title: "Orders Today", value: ordersToday.toString(), change: `${ordersChange >= 0 ? '+' : ''}${ordersChange}%`, isPositive: ordersChange >= 0, icon: Package, color: "text-blue-400", bg: "bg-blue-500/10" },
                     { title: "Low Stock", value: `${lowStockCount} Items`, change: lowStockCount > 0 ? "Urgent" : "Good", isPositive: lowStockCount === 0, icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/10" },
                     { title: "Profile Visits", value: profileVisits.toLocaleString(), change: `${visitsChange >= 0 ? '+' : ''}${visitsChange}%`, isPositive: visitsChange >= 0, icon: Eye, color: "text-purple-400", bg: "bg-purple-500/10" },
                 ]);
+
+                if (performance) {
+                    setTodaysSales(performance);
+                }
             }
         } catch (err) { console.error(err); } finally { setStatsLoading(false); }
     };
@@ -415,13 +420,12 @@ const OwnerDashboard = () => {
         return () => window.removeEventListener('keydown', handleKeyPress);
     }, [navigate]);
 
-    // Calculate Today's Sales when orders change
-    useEffect(() => {
-        if (orders.length > 0) {
-            calculateTodaysSales();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [orders]);
+    // Calculate Today's Sales - REMOVED (Handled by Backend)
+    // useEffect(() => {
+    //     if (orders.length > 0) {
+    //         calculateTodaysSales();
+    //     }
+    // }, [orders]);
 
     // Socket.io for real-time notifications - Temporarily disabled
     // useEffect(() => {
@@ -659,7 +663,7 @@ const OwnerDashboard = () => {
                             />
                         </div>
                     </div>
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {ordersLoading ? <Loader className="w-8 h-8 animate-spin mx-auto text-indigo-500" /> :
                             orders.filter(o => o.userId?.name?.toLowerCase().includes(orderSearchQuery.toLowerCase())).length === 0 ? <p className="text-gray-500 text-center py-4">No matching requests.</p> :
                                 orders.filter(o => o.userId?.name?.toLowerCase().includes(orderSearchQuery.toLowerCase())).map(order => (
