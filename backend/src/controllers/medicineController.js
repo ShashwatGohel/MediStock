@@ -56,10 +56,51 @@ export const addMedicine = async (req, res) => {
             quantity,
             price,
             expiryDate,
+            type = "Medicine", // Default to Medicine
         } = req.body;
 
         const storeId = req.user.id; // from auth middleware
+        const parsedExpiryDate = parseDate(expiryDate);
 
+        // Check if medicine with same name, brand, and category already exists for this store
+        const existingMedicine = await Medicine.findOne({
+            storeId,
+            name: { $regex: new RegExp(`^${name}$`, 'i') }, // Case-insensitive match
+            brand: brand ? { $regex: new RegExp(`^${brand}$`, 'i') } : { $exists: false },
+            category: category ? { $regex: new RegExp(`^${category}$`, 'i') } : { $exists: false },
+            type // Exact match for type
+        });
+
+        if (existingMedicine) {
+            // Merge stock: add quantity
+            existingMedicine.quantity += parseInt(quantity) || 0;
+
+            // Update price to the latest
+            existingMedicine.price = price;
+
+            // Keep the later expiry date (safer for stock management)
+            if (parsedExpiryDate && existingMedicine.expiryDate) {
+                existingMedicine.expiryDate = parsedExpiryDate > existingMedicine.expiryDate
+                    ? parsedExpiryDate
+                    : existingMedicine.expiryDate;
+            } else if (parsedExpiryDate) {
+                existingMedicine.expiryDate = parsedExpiryDate;
+            }
+
+            // Update availability
+            existingMedicine.isAvailable = existingMedicine.quantity > 0;
+
+            await existingMedicine.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Stock merged with existing medicine",
+                medicine: existingMedicine,
+                merged: true
+            });
+        }
+
+        // Create new medicine if no duplicate found
         const medicine = await Medicine.create({
             storeId,
             name,
@@ -67,13 +108,15 @@ export const addMedicine = async (req, res) => {
             category,
             quantity,
             price,
-            expiryDate: parseDate(expiryDate),
+            expiryDate: parsedExpiryDate,
+            type,
             isAvailable: quantity > 0,
         });
 
         res.status(201).json({
             success: true,
             medicine,
+            merged: false
         });
     } catch (error) {
         console.error("Error adding medicine:", error);
@@ -97,6 +140,87 @@ export const getStoreMedicines = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to fetch medicines"
+        });
+    }
+};
+
+export const getReorderSuggestions = async (req, res) => {
+    try {
+        const storeId = req.user.id;
+        const mongoose = await import('mongoose');
+        const Bill = (await import('../models/Bill.js')).default;
+
+        // 1. Get bills from the last 7 days
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const bills = await Bill.find({
+            storeId,
+            date: { $gte: sevenDaysAgo }
+        });
+
+        // 2. Calculate velocity (quantity sold per day)
+        const salesVelocity = {};
+        bills.forEach(bill => {
+            bill.items.forEach(item => {
+                const medId = item.medicineId.toString();
+                salesVelocity[medId] = (salesVelocity[medId] || 0) + item.quantity;
+            });
+        });
+
+        // 3. Get all medicines
+        const medicines = await Medicine.find({ storeId });
+
+        // 4. Generate suggestions
+        const suggestions = medicines.map(med => {
+            const soldTotal = salesVelocity[med._id.toString()] || 0;
+            const dailyVelocity = soldTotal / 7;
+            const daysOfStockLeft = dailyVelocity > 0 ? med.quantity / dailyVelocity : Infinity;
+
+            return {
+                id: med._id,
+                name: med.name,
+                category: med.category,
+                quantity: med.quantity,
+                dailyVelocity: parseFloat(dailyVelocity.toFixed(2)),
+                daysOfStockLeft: daysOfStockLeft === Infinity ? "N/A" : Math.ceil(daysOfStockLeft),
+                priority: daysOfStockLeft < 3 ? "High" : daysOfStockLeft < 7 ? "Medium" : "Low"
+            };
+        }).filter(s => s.priority !== "Low" || (s.quantity < 5 && s.dailyVelocity > 0))
+            .sort((a, b) => {
+                if (a.priority === "High" && b.priority !== "High") return -1;
+                if (b.priority === "High" && a.priority !== "High") return 1;
+                return b.dailyVelocity - a.dailyVelocity;
+            });
+
+        res.json({ success: true, suggestions });
+    } catch (error) {
+        console.error("Error in getReorderSuggestions:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch reorder suggestions"
+        });
+    }
+};
+
+export const getExpiringMedicines = async (req, res) => {
+    try {
+        const storeId = req.user.id;
+        const days = parseInt(req.query.days) || 30; // Default 30 days
+        const targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() + days);
+
+        const medicines = await Medicine.find({
+            storeId,
+            expiryDate: { $lte: targetDate, $gt: new Date() }
+        }).sort({ expiryDate: 1 });
+
+        res.json({ success: true, medicines });
+    } catch (error) {
+        console.error("Error fetching expiring medicines:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch expiring medicines"
         });
     }
 };

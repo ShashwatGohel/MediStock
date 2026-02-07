@@ -1,10 +1,12 @@
 import express from "express";
 import {
   getNearbyStores,
+  getAllStores,
   searchStoresByMedicine,
   getStoreById,
   getStoreMedicines,
   updateStoreLocation,
+  updateStoreStatus,
   toggleSaveStore,
   getSavedStores,
   getStoreProfile,
@@ -14,12 +16,14 @@ import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 router.get("/nearby", getNearbyStores);
+router.get("/all", getAllStores);
 router.get("/search", searchStoresByMedicine);
 router.get("/saved", protect, getSavedStores);
 router.get("/profile", protect, getStoreProfile);
 router.get("/:storeId", getStoreById);
 router.get("/:storeId/medicines", getStoreMedicines);
 router.put("/location", protect, updateStoreLocation);
+router.put("/status", protect, updateStoreStatus);
 router.post("/toggle-save/:storeId", protect, toggleSaveStore);
 
 export default router;

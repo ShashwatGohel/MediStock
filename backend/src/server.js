@@ -10,6 +10,9 @@ import medicineRoutes from "./routes/medicineRoutes.js";
 import billRoutes from "./routes/billRoutes.js";
 import storeRoutes from "./routes/storeRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
+import dailyRecordRoutes from "./routes/dailyRecordRoutes.js";
+import vaultRoutes from "./routes/vaultRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 import initCleanupTask from "./tasks/cleanupTask.js";
 
 // Fix for __dirname in ES Modules
@@ -64,11 +67,19 @@ app.use("/api/medicines", medicineRoutes);
 app.use("/api/bills", billRoutes);
 app.use("/api/stores", storeRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/daily-records", dailyRecordRoutes);
+app.use("/api/vault", vaultRoutes);
+app.use("/api/reviews", reviewRoutes);
+
 
 
 // Health Check Route
 app.get("/", (req, res) => {
   res.status(200).json({ message: "🚀 MediStock Backend Running" });
+});
+
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
 

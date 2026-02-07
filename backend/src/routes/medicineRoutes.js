@@ -7,7 +7,9 @@ import {
     getCatalog,
     getCategoryGlobalSearch,
     bulkUploadMedicines,
-    updateMedicine
+    updateMedicine,
+    getExpiringMedicines,
+    getReorderSuggestions
 } from "../controllers/medicineController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import multer from "multer";
@@ -23,6 +25,8 @@ router.get("/catalog", getCatalog);
 router.get("/category-search", getCategoryGlobalSearch);
 router.delete("/delete/:id", authMiddleware, deleteMedicine);
 router.patch("/update/:id", authMiddleware, updateMedicine);
+router.get("/reorder-suggestions", authMiddleware, getReorderSuggestions);
+router.get("/expiring-medicines", authMiddleware, getExpiringMedicines);
 router.post("/bulk-upload", authMiddleware, upload.single("file"), bulkUploadMedicines);
 
 export default router;

@@ -1,6 +1,7 @@
 import Order from "../models/Order.js";
 import Medicine from "../models/Medicine.js";
 import Store from "../models/Store.js";
+import DailyRecord from "../models/DailyRecord.js";
 
 export const createOrder = async (req, res) => {
     try {
@@ -100,6 +101,26 @@ export const updateOrderStatus = async (req, res) => {
                     medicine.reservedQuantity -= item.quantity;
                     await medicine.save();
                 }
+            }
+
+            // Update daily record for confirmed order
+            try {
+                const startOfToday = new Date();
+                startOfToday.setHours(0, 0, 0, 0);
+
+                await DailyRecord.findOneAndUpdate(
+                    { storeId: order.storeId, date: startOfToday },
+                    {
+                        $inc: {
+                            totalSales: order.totalAmount,
+                            orderCount: 1,
+                            salesFromOrders: order.totalAmount
+                        }
+                    },
+                    { upsert: true, new: true }
+                );
+            } catch (recordError) {
+                console.error("Error updating daily record:", recordError);
             }
         } else if (status === "cancelled" && oldStatus === "approved") {
             // "if the trade is cancelled then the quantity is set to the original one"

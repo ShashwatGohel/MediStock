@@ -1,5 +1,7 @@
 import User from "../models/User.js";
 import Medicine from "../models/Medicine.js";
+import Review from "../models/Review.js";
+import mongoose from "mongoose";
 
 // 📍 Get all stores within radius
 export const getNearbyStores = async (req, res) => {
@@ -47,6 +49,12 @@ export const getNearbyStores = async (req, res) => {
           isAvailable: true
         });
 
+        // Get review stats
+        const reviewStats = await Review.aggregate([
+          { $match: { storeId: store._id } },
+          { $group: { _id: "$storeId", averageRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+        ]);
+
         return {
           id: store._id,
           name: store.storeName || store.name,
@@ -58,6 +66,8 @@ export const getNearbyStores = async (req, res) => {
           latitude: store.latitude,
           longitude: store.longitude,
           medicineCount,
+          rating: reviewStats[0]?.averageRating || 0,
+          reviewCount: reviewStats[0]?.count || 0
         };
       })
     );
@@ -72,6 +82,74 @@ export const getNearbyStores = async (req, res) => {
     });
   } catch (err) {
     console.error("Error in getNearbyStores:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// 🏪 Get all registered stores (for directory page)
+export const getAllStores = async (req, res) => {
+  try {
+    const { search, sortBy = 'name' } = req.query;
+
+    // Build query
+    const query = { role: "store" };
+
+    if (search) {
+      query.$or = [
+        { storeName: { $regex: search, $options: "i" } },
+        { name: { $regex: search, $options: "i" } },
+        { storeAddress: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    // Fetch stores
+    const stores = await User.find(query)
+      .select("name storeName storeAddress location latitude longitude isStoreOpen operatingHours phone")
+      .lean();
+
+    // Get medicine count and review stats for each store
+    const storesWithDetails = await Promise.all(
+      stores.map(async (store) => {
+        const medicineCount = await Medicine.countDocuments({
+          storeId: store._id,
+          isAvailable: true
+        });
+
+        const reviewStats = await Review.aggregate([
+          { $match: { storeId: store._id } },
+          { $group: { _id: "$storeId", averageRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+        ]);
+
+        return {
+          id: store._id,
+          name: store.storeName || store.name,
+          address: store.storeAddress,
+          isOpen: store.isStoreOpen,
+          operatingHours: store.operatingHours,
+          phone: store.phone,
+          latitude: store.latitude,
+          longitude: store.longitude,
+          medicineCount,
+          rating: reviewStats[0]?.averageRating || 0,
+          reviewCount: reviewStats[0]?.count || 0
+        };
+      })
+    );
+
+    // Sort results
+    if (sortBy === 'rating') {
+      storesWithDetails.sort((a, b) => b.rating - a.rating);
+    } else if (sortBy === 'name') {
+      storesWithDetails.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    res.json({
+      success: true,
+      stores: storesWithDetails,
+      count: storesWithDetails.length
+    });
+  } catch (err) {
+    console.error("Error in getAllStores:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
@@ -99,6 +177,12 @@ export const getStoreById = async (req, res) => {
       isAvailable: true
     });
 
+    // Get review stats
+    const reviewStats = await Review.aggregate([
+      { $match: { storeId: store._id } },
+      { $group: { _id: "$storeId", averageRating: { $avg: "$rating" }, count: { $sum: 1 } } }
+    ]);
+
     res.json({
       success: true,
       store: {
@@ -113,6 +197,8 @@ export const getStoreById = async (req, res) => {
         email: store.email,
         licenseNumber: store.licenseNumber,
         medicineCount,
+        rating: reviewStats[0]?.averageRating || 0,
+        reviewCount: reviewStats[0]?.count || 0
       },
     });
   } catch (err) {
@@ -156,6 +242,33 @@ export const getStoreMedicines = async (req, res) => {
     });
   } catch (err) {
     console.error("Error in getStoreMedicines:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// 🔄 Update store status and operating hours
+export const updateStoreStatus = async (req, res) => {
+  try {
+    const storeId = req.user.id;
+    const { isStoreOpen, operatingHours } = req.body;
+
+    const updateData = {};
+    if (isStoreOpen !== undefined) updateData.isStoreOpen = isStoreOpen;
+    if (operatingHours !== undefined) updateData.operatingHours = operatingHours;
+
+    const updatedStore = await User.findByIdAndUpdate(
+      storeId,
+      updateData,
+      { new: true }
+    ).select("isStoreOpen operatingHours storeName");
+
+    res.json({
+      success: true,
+      message: "Store status updated successfully",
+      store: updatedStore
+    });
+  } catch (err) {
+    console.error("Error in updateStoreStatus:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 };
@@ -239,8 +352,13 @@ export const searchStoresByMedicine = async (req, res) => {
           operatingHours: med.storeId.operatingHours,
           phone: med.storeId.phone,
           latitude: med.storeId.latitude,
+          latitude: med.storeId.latitude,
           longitude: med.storeId.longitude,
           medicines: storeMedicines,
+          rating: (await Review.aggregate([
+            { $match: { storeId: med.storeId._id } },
+            { $group: { _id: "$storeId", averageRating: { $avg: "$rating" } } }
+          ]))[0]?.averageRating || 0,
         });
       }
     }

@@ -8,6 +8,12 @@ const medicineSchema = new mongoose.Schema(
             required: true,
         },
 
+        type: {
+            type: String,
+            enum: ["Medicine", "Instrument"],
+            default: "Medicine",
+        },
+
         name: {
             type: String,
             required: true,

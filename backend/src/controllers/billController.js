@@ -2,6 +2,7 @@ import Bill from "../models/Bill.js";
 import Medicine from "../models/Medicine.js";
 import Visit from "../models/Visit.js";
 import Order from "../models/Order.js";
+import DailyRecord from "../models/DailyRecord.js";
 
 // Create a new bill/transaction
 export const createBill = async (req, res) => {
@@ -85,6 +86,27 @@ export const createBill = async (req, res) => {
             customerPhone,
             date: new Date()
         });
+
+        // Update daily record
+        try {
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            await DailyRecord.findOneAndUpdate(
+                { storeId, date: startOfToday },
+                {
+                    $inc: {
+                        totalSales: totalAmount,
+                        billCount: 1,
+                        salesFromBills: totalAmount
+                    }
+                },
+                { upsert: true, new: true }
+            );
+        } catch (recordError) {
+            console.error("Error updating daily record:", recordError);
+            // Don't fail the bill creation if daily record fails
+        }
 
         res.status(201).json({
             success: true,
@@ -266,10 +288,13 @@ export const incrementVisit = async (req, res) => {
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
 
-        // Try to find today's visit record
+        const endOfToday = new Date(startOfToday);
+        endOfToday.setHours(23, 59, 59, 999);
+
+        // Try to find today's visit record with exact date match
         let visit = await Visit.findOne({
             storeId: storeId,
-            date: { $gte: startOfToday }
+            date: startOfToday
         });
 
         if (visit) {
@@ -285,6 +310,17 @@ export const incrementVisit = async (req, res) => {
             });
         }
 
+        // Update daily record
+        try {
+            await DailyRecord.findOneAndUpdate(
+                { storeId, date: startOfToday },
+                { $set: { visitCount: visit.count } },
+                { upsert: true, new: true }
+            );
+        } catch (recordError) {
+            console.error("Error updating daily record:", recordError);
+        }
+
         res.json({
             success: true,
             visit
@@ -295,6 +331,31 @@ export const incrementVisit = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to increment visit",
+            error: error.message
+        });
+    }
+};
+
+// Get visit history
+export const getVisitHistory = async (req, res) => {
+    try {
+        const storeId = req.user.id;
+        const limit = parseInt(req.query.limit) || 30;
+
+        const visits = await Visit.find({ storeId })
+            .sort({ date: -1 })
+            .limit(limit);
+
+        res.json({
+            success: true,
+            visits
+        });
+
+    } catch (error) {
+        console.error("Error fetching visit history:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch visit history",
             error: error.message
         });
     }
