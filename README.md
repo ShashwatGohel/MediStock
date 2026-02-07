@@ -1,109 +1,190 @@
 # MediStock 🏥💊
 
-**MediStock** is a comprehensive **Medical Inventory & Order Management System** designed to bridge the gap between local pharmacies and customers. It empowers store owners to manage their inventory, sales, and orders efficiently while providing users with a seamless platform to find and order medicines from nearby stores.
+**MediStock** is a full-stack **Medical Inventory & Order Management System** that connects **local pharmacies** with **customers**.  
+It helps store owners manage inventory, orders, and billing while allowing users to easily search and order medicines from nearby stores.
+
+🌐 **Live App:** https://medi-stock-theta.vercel.app/
+
+---
 
 ## 🚀 Key Features
 
 ### 👤 For Users (Customers)
-- **Medicine Search**: Find medicines globally or by category.
-- **Store Locator**: View nearby pharmacies on an interactive map 🗺️.
-- **Order Placement**:
-    - **Quick Order**: Order directly from search results.
-    - **Cart System**: Add multiple items and checkout.
-    - **Prescription Upload**: Upload prescriptions for verification 📄.
-- **Real-time Updates**: Status tracking for orders (Pending -> Approved -> Confirmed -> Delivered).
-- **Bill Management**: View purchase history and digital bills.
+
+- 🔍 **Medicine Search** — Search medicines globally or by category  
+- 🗺️ **Store Locator** — View nearby pharmacies on an interactive map  
+- 🛒 **Multiple Ordering Options**
+  - **Quick Order** directly from search
+  - **Cart System** for multiple medicines
+  - **Prescription Upload** for restricted medicines 📄
+- 🔔 **Real-Time Order Tracking**  
+  Status updates: **Pending → Approved → Confirmed → Delivered**
+- 🧾 **Bill Management** — View order history and digital bills
+
+---
 
 ### 🏪 For Store Owners (Pharmacists)
-- **Owner Dashboard**: Real-time overview of **Total Sales**, **Orders**, **Low Stock**, and **Profile Visits**.
-    - **Performance Analytics**: Detailed breakdown of daily sales (Cash vs. Digital, Items Sold) 📊.
-- **Inventory Management**: Add, update, and delete medicines. Bulk upload via Excel supported 📥.
-- **Order Processing**: Accept/Reject orders with real-time status updates via Socket.io.
-- **Billing System**: Built-in POS (Point of Sale) to generate verified digital bills for walk-in customers 🧾.
-- **Sales Reports**: Track daily, weekly, and monthly sales performance.
+
+- 📊 **Owner Dashboard**
+  - Total Sales
+  - Total Orders
+  - Low Stock Alerts
+  - Profile Visits
+- 📈 **Performance Analytics**
+  - Daily sales breakdown
+  - Cash vs Digital payments
+  - Items sold
+- 💊 **Inventory Management**
+  - Add / Edit / Delete medicines
+  - Bulk upload using Excel 📥
+- 📦 **Order Processing**
+  - Accept / Reject orders
+  - Real-time updates via Socket.io
+- 🧾 **Built-in Billing (POS System)**
+  - Generate digital bills for walk-in customers
+- 📅 **Sales Reports**
+  - Daily, Weekly, Monthly insights
 
 ---
 
 ## 🛠️ Tech Stack
 
-### **Frontend**
-- **Framework**: [React.js](https://react.dev/) (Vite)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **State/Routing**: React Router DOM, Context API
-- **Animations**: Framer Motion
-- **Maps**: Leaflet / React-Leaflet
-- **Notifications**: React Hot Toast
-- **PDF Generation**: jsPDF (for bills)
+### 🎨 Frontend
+- **Framework:** React.js (Vite)
+- **Styling:** Tailwind CSS
+- **Routing & State:** React Router DOM, Context API
+- **Animations:** Framer Motion
+- **Maps:** Leaflet / React-Leaflet
+- **Notifications:** React Hot Toast
+- **PDF Generation:** jsPDF
 
-### **Backend**
-- **Runtime**: [Node.js](https://nodejs.org/)
-- **Framework**: [Express.js](https://express.js.com/)
-- **Database**: [MongoDB](https://www.mongodb.com/) (Mongoose ODM)
-- **Real-time**: [Socket.io](https://socket.io/) (for order updates)
-- **Authentication**: JWT (JSON Web Tokens)
-- **File Handling**: Multer (images), XLSX (bulk upload)
+### ⚙️ Backend
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** MongoDB (Mongoose ODM)
+- **Real-time:** Socket.io
+- **Authentication:** JWT (JSON Web Tokens)
+- **File Handling:** Multer (images), XLSX (bulk upload)
 
 ---
 
-## ⚙️ Installation & Setup
+## ☁️ Deployment
 
-Follow these steps to run the project locally.
+| Service      | Platform | Description |
+|-------------|----------|-------------|
+| **Frontend** | Vercel   | React app hosting |
+| **Backend**  | Render / Railway / VPS | API server |
+| **Database** | MongoDB Atlas | Cloud database |
 
-### Prerequisites
-- Node.js (v16+)
-- MongoDB (Local or Atlas URL)
+> ⚠️ The backend may take a few seconds to respond if hosted on a free-tier service (cold start).
 
-### 1. Clone the Repository
+---
+
+## ⚙️ Installation & Local Setup
+
+### 📌 Prerequisites
+- Node.js (v16+ recommended)
+- MongoDB (Local or Atlas)
+
+---
+
+### 1️⃣ Clone the Repository
+
 ```bash
 git clone https://github.com/ShashwatGohel/MediStock.git
 cd MediStock
 ```
 
-### 2. Backend Setup
-Navigate to the backend folder and install dependencies:
+---
+
+### 2️⃣ Backend Setup
+
 ```bash
 cd backend
 npm install
 ```
-Create a `.env` file in the `backend` directory with the following variables:
+
+Create a `.env` file in the `backend` folder:
+
 ```env
 PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 FRONTEND_URL=http://localhost:5173
 ```
-Start the backend server:
+
+Run the backend:
+
 ```bash
 npm run dev
-# Server runs on http://localhost:5000
 ```
 
-### 3. Frontend Setup
-Open a new terminal, navigate to the frontend folder, and install dependencies:
+Server runs at 👉 `http://localhost:5000`
+
+---
+
+### 3️⃣ Frontend Setup
+
+Open a new terminal:
+
 ```bash
 cd frontend
 npm install
 ```
-Create a `.env` file in the `frontend` directory (optional if using defaults):
+
+Create a `.env` file in the `frontend` folder (optional):
+
 ```env
 VITE_API_URL=http://localhost:5000
 ```
-Start the frontend development server:
+
+Run the frontend:
+
 ```bash
 npm run dev
-# App runs on http://localhost:5173
 ```
+
+App runs at 👉 `http://localhost:5173`
 
 ---
 
-## 📱 Usage
-1.  **Register**: Create an account as a **User** or **Store Owner**.
-2.  **Store Setup**: If you are a store owner, complete your profile (Location, Opening Hours).
-3.  **Add Inventory**: Upload medicines to your store.
-4.  **Explore**: As a user, search for medicines and place orders!
+## 📱 How to Use
 
-## 🤝 Contribution
-Contributions are welcome! Feel free to open issues or submit pull requests.
+1. **Register** as a **Customer** or **Store Owner**
+2. Store owners complete their **store profile**
+3. Add medicines to inventory
+4. Customers search for medicines & place orders
+5. Track orders in real-time
+
+---
+
+## 🔐 Roles in the System
+
+| Role | Permissions |
+|------|-------------|
+| **Customer** | Search, Order, Upload Prescription, Track Orders |
+| **Store Owner** | Manage Inventory, Process Orders, Generate Bills, View Analytics |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome!
+
+1. Fork the repo  
+2. Create a feature branch  
+3. Commit your changes  
+4. Open a Pull Request 🚀  
+
+---
 
 ## 📄 License
-This project is licensed under the ISC License.
+
+This project is licensed under the **ISC License**.
+
+---
+
+## 👨‍💻 Developer
+
+Built with ❤️ by **Shashwat Gohel**  
+B.Tech CSE Student | Full Stack Developer
