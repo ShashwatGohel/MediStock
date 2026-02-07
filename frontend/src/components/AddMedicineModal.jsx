@@ -12,6 +12,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
         price: "",
         expiryDate: "",
         description: "",
+        type: "Medicine", // Default type
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -115,6 +116,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                     price: "",
                     expiryDate: "",
                     description: "",
+                    type: "Medicine",
                 });
 
                 // Call success callback
@@ -163,8 +165,8 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                                         <Package className="w-6 h-6 text-indigo-400" />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-bold text-white">Add New Medicine</h2>
-                                        <p className="text-sm text-gray-400 mt-0.5">Add medicine to your inventory</p>
+                                        <h2 className="text-2xl font-bold text-white">Add New Item</h2>
+                                        <p className="text-sm text-gray-400 mt-0.5">Add medicine or instrument to inventory</p>
                                     </div>
                                 </div>
                                 <button
@@ -188,11 +190,37 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                                     </motion.div>
                                 )}
 
-                                {/* Medicine Name */}
+                                {/* Type Selection */}
+                                <div className="grid grid-cols-2 gap-4 p-1 bg-white/5 rounded-xl">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: "Medicine" })}
+                                        className={`py-2 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formData.type === "Medicine"
+                                            ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                                            }`}
+                                    >
+                                        <Pill className="w-4 h-4" />
+                                        Medicine
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: "Instrument" })}
+                                        className={`py-2 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${formData.type === "Instrument"
+                                            ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                                            : "text-gray-400 hover:text-white hover:bg-white/5"
+                                            }`}
+                                    >
+                                        <Package className="w-4 h-4" />
+                                        Instrument
+                                    </button>
+                                </div>
+
+                                {/* Item Name */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                                        <Pill className="w-4 h-4 text-indigo-400" />
-                                        Medicine Name <span className="text-red-400">*</span>
+                                        {formData.type === "Medicine" ? <Pill className="w-4 h-4 text-indigo-400" /> : <Package className="w-4 h-4 text-indigo-400" />}
+                                        {formData.type === "Medicine" ? "Medicine Name" : "Instrument Name"} <span className="text-red-400">*</span>
                                     </label>
                                     <div className="relative">
                                         <input
@@ -201,7 +229,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                                             value={formData.name}
                                             onChange={handleChange}
                                             onFocus={() => formData.name.length >= 2 && setShowCatalogDropdown(true)}
-                                            placeholder="e.g., Paracetamol 500mg"
+                                            placeholder={formData.type === "Medicine" ? "e.g., Paracetamol 500mg" : "e.g., Digital Thermometer"}
                                             className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder:text-gray-600 focus:outline-none focus:border-indigo-500/50 transition-all"
                                             required
                                             autoComplete="off"
@@ -350,7 +378,7 @@ const AddMedicineModal = ({ isOpen, onClose, onSuccess }) => {
                                         disabled={loading}
                                         className="flex-1 px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-semibold shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {loading ? "Adding..." : "Add Medicine"}
+                                        {loading ? "Adding..." : "Add Item"}
                                     </button>
                                 </div>
                             </form>

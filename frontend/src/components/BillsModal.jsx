@@ -1,18 +1,32 @@
 import { useState, useEffect } from "react";
-import { X, FileText, Calendar, DollarSign, User, Phone } from "lucide-react";
+import { X, FileText, Calendar, DollarSign, User, Phone, Download } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URLS } from "../api";
+import { generateBillPDF } from "../utils/pdfUtils";
 
 const BillsModal = ({ isOpen, onClose }) => {
     const [bills, setBills] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedBill, setSelectedBill] = useState(null);
+    const [storeData, setStoreData] = useState(null);
 
     useEffect(() => {
         if (isOpen) {
             fetchBills();
+            fetchStoreProfile();
         }
     }, [isOpen]);
+
+    const fetchStoreProfile = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const response = await fetch(`${API_URLS.STORES}/profile`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) setStoreData(data.store);
+        } catch (err) { console.error(err); }
+    };
 
     const fetchBills = async () => {
         try {
@@ -106,9 +120,20 @@ const BillsModal = ({ isOpen, onClose }) => {
                                                     <h3 className="text-xl font-bold text-white">{selectedBill.billNumber}</h3>
                                                     <p className="text-sm text-gray-400">{formatDate(selectedBill.date)}</p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-2xl font-bold text-emerald-400">₹{selectedBill.totalAmount.toFixed(2)}</p>
-                                                    <p className="text-xs text-gray-400 uppercase">{selectedBill.paymentMethod}</p>
+                                                <div className="text-right flex flex-col items-end gap-2">
+                                                    <div>
+                                                        <p className="text-2xl font-bold text-emerald-400">₹{selectedBill.totalAmount.toFixed(2)}</p>
+                                                        <p className="text-xs text-gray-400 uppercase">{selectedBill.paymentMethod}</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            generateBillPDF(selectedBill, storeData);
+                                                        }}
+                                                        className="flex items-center gap-2 px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg transition-all"
+                                                    >
+                                                        <Download className="w-3 h-3" /> PDF
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -169,9 +194,18 @@ const BillsModal = ({ isOpen, onClose }) => {
                                                                 </p>
                                                             )}
                                                         </div>
-                                                        <div className="text-right">
+                                                        <div className="text-right flex flex-col items-end gap-2">
                                                             <p className="text-lg font-bold text-emerald-400">₹{bill.totalAmount.toFixed(2)}</p>
-                                                            <p className="text-xs text-gray-500 uppercase mt-1">{bill.paymentMethod}</p>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    generateBillPDF(bill, storeData);
+                                                                }}
+                                                                className="p-2 bg-indigo-500/10 hover:bg-indigo-500 text-indigo-400 hover:text-white rounded-lg transition-all"
+                                                                title="Download PDF"
+                                                            >
+                                                                <Download className="w-4 h-4" />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                     <div className="mt-2 text-xs text-gray-500">

@@ -29,10 +29,10 @@ const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
                     items: [{
                         medicineId: medicine._id,
                         medicineName: medicine.name,
-                        quantity: parseInt(quantity),
+                        quantity: parseInt(quantity) || 1,
                         price: medicine.price
                     }],
-                    totalAmount: medicine.price * quantity
+                    totalAmount: medicine.price * (parseInt(quantity) || 1)
                 })
             });
 
@@ -110,7 +110,17 @@ const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
                                                 <input
                                                     type="number"
                                                     value={quantity}
-                                                    onChange={(e) => setQuantity(Math.max(1, Math.min(medicine.quantity, parseInt(e.target.value) || 1)))}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val === "") {
+                                                            setQuantity("");
+                                                        } else {
+                                                            const num = parseInt(val);
+                                                            if (!isNaN(num)) {
+                                                                setQuantity(Math.min(medicine.quantity, num));
+                                                            }
+                                                        }
+                                                    }}
                                                     className="flex-1 bg-black/40 border border-white/10 rounded-xl py-3 text-center text-white text-xl font-bold focus:outline-none focus:border-emerald-500/50"
                                                 />
                                                 <button
@@ -127,7 +137,7 @@ const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
                                         <div className="pt-4 border-t border-white/5 space-y-3">
                                             <div className="flex items-center justify-between text-lg">
                                                 <span className="text-gray-400">Total Amount</span>
-                                                <span className="font-bold text-emerald-400 text-2xl">₹{medicine.price * quantity}</span>
+                                                <span className="font-bold text-emerald-400 text-2xl">₹{medicine.price * (parseInt(quantity) || 0)}</span>
                                             </div>
 
                                             {error && (

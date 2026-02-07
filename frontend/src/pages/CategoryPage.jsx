@@ -63,6 +63,61 @@ const CategoryPage = () => {
         fetchCategoryData(userLocation, searchQuery);
     };
 
+    const handleQuickOrder = (medicineName) => {
+        setSearchQuery(medicineName);
+        fetchCategoryData(userLocation, medicineName);
+        // Scroll to results
+        setTimeout(() => {
+            const resultsSection = document.getElementById('search-results');
+            resultsSection?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+    };
+
+    const normalizedCategory = categoryName?.toLowerCase() || "";
+    const isMedicines = normalizedCategory === "medicines" || normalizedCategory === "medicine";
+
+    const categoryMedicines = {
+        "medicines": [
+            { id: 1, name: "Paracetamol 500mg", price: 30, unit: "Crocin" },
+            { id: 2, name: "Ibuprofen 400mg", price: 45, unit: "Brufen" },
+            { id: 3, name: "Azithromycin 500mg", price: 120, unit: "Azithral" },
+            { id: 4, name: "Cetirizine 10mg", price: 35, unit: "Okacet" }
+        ],
+        "first aid": [
+            { id: 5, name: "Antiseptic Liquid", price: 95, unit: "Dettol" },
+            { id: 6, name: "Adhesive Bandages", price: 45, unit: "Band-Aid" },
+            { id: 7, name: "Cotton Wool", price: 30, unit: "Generic" },
+            { id: 8, name: "Micropore Tape", price: 55, unit: "3M" }
+        ],
+        "skincare": [
+            { id: 9, name: "Moisturizing Cream", price: 280, unit: "Cetaphil" },
+            { id: 10, name: "Sunscreen SPF 50", price: 450, unit: "Neutrogena" },
+            { id: 11, name: "Acne Gel", price: 185, unit: "Benzac AC" },
+            { id: 12, name: "Aloe Vera Gel", price: 120, unit: "Patanjali" }
+        ],
+        "baby care": [
+            { id: 13, name: "Baby Diapers", price: 750, unit: "Pampers" },
+            { id: 14, name: "Baby Wipes", price: 145, unit: "Johnson's" },
+            { id: 15, name: "Baby Lotion", price: 210, unit: "Himalaya" },
+            { id: 16, name: "Baby Oil", price: 180, unit: "Dabur Lal" }
+        ],
+        "devices": [
+            { id: 17, name: "Digital Thermometer", price: 299, unit: "Dr. Trust" },
+            { id: 18, name: "BP Monitor", price: 1950, unit: "Omron" },
+            { id: 19, name: "Glucometer", price: 850, unit: "Accu-Chek" },
+            { id: 20, name: "Pulse Oximeter", price: 1250, unit: "Dr. Morepen" }
+        ],
+        "fitness": [
+            { id: 21, name: "Whey Protein", price: 2450, unit: "Optimum Nutrition" },
+            { id: 22, name: "Multivitamin Tablets", price: 499, unit: "Revital H" },
+            { id: 23, name: "Omega 3 Capsules", price: 890, unit: "MuscleBlaze" },
+            { id: 24, name: "BCAA Powder", price: 1350, unit: "Scivation Xtend" }
+        ]
+    };
+
+    // Correct lookup for "Medicines" vs "medicine"
+    const featuredItems = isMedicines ? categoryMedicines["medicines"] : categoryMedicines[normalizedCategory];
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-['Outfit'] pb-20">
             {/* Header */}
@@ -98,6 +153,47 @@ const CategoryPage = () => {
                     </div>
                 ) : (
                     <>
+                        {/* Featured Items Section (Predefined) */}
+                        {featuredItems && (
+                            <div className="space-y-4">
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                    <ShoppingBag className="w-5 h-5 text-indigo-400" />
+                                    Featured in {categoryName}
+                                </h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {featuredItems.map((med) => (
+                                        <div
+                                            key={med.id}
+                                            className="bg-[#121212] border border-white/5 rounded-2xl p-5 hover:border-indigo-500/30 transition-all group relative overflow-hidden flex flex-col justify-between"
+                                        >
+                                            <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity">
+                                                <Package className="w-12 h-12" />
+                                            </div>
+
+                                            <div>
+                                                <h3 className="font-bold text-white text-base mb-1 group-hover:text-indigo-400 transition-colors uppercase tracking-tight">{med.name}</h3>
+                                                <p className="text-xs text-gray-500 font-medium">{med.unit}</p>
+                                            </div>
+
+                                            <div className="flex items-center justify-between mt-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] text-gray-600 uppercase font-bold tracking-widest">Price</span>
+                                                    <span className="text-xl font-black text-white">₹{med.price}</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleQuickOrder(med.name)}
+                                                    className="px-4 py-2 bg-indigo-500/10 hover:bg-indigo-500 text-indigo-400 hover:text-white border border-indigo-500/20 rounded-xl text-xs font-bold transition-all flex items-center gap-2 group/btn active:scale-95"
+                                                >
+                                                    <Search className="w-3.5 h-3.5" />
+                                                    Find Near Me
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Section 1: In Stock Nearby (Real Inventory) */}
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">

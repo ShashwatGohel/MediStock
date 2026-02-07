@@ -7,6 +7,8 @@ export const API_URLS = {
     BILLS: `${API_BASE_URL}/api/bills`,
     STORES: `${API_BASE_URL}/api/stores`,
     ORDERS: `${API_BASE_URL}/api/orders`,
+    VAULT: `${API_BASE_URL}/api/vault`,
+    REVIEWS: `${API_BASE_URL}/api/reviews`,
 };
 
 export default API_BASE_URL;

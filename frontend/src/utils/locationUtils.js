@@ -1,5 +1,32 @@
-// Get user's current location
-export const getCurrentLocation = () => {
+// Get user's current location using IP tracking (Primary)
+export const getCurrentLocation = async () => {
+    try {
+        console.log("Fetching location by IP...");
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+
+        if (data && data.latitude && data.longitude) {
+            console.log("IP Location detected:", data.city);
+            return {
+                latitude: data.latitude,
+                longitude: data.longitude,
+                city: data.city,
+                region: data.region,
+                country: data.country_name,
+                address: `${data.city}, ${data.region}, ${data.country_name}`,
+                accuracy: 1000, // City-level accuracy
+                isIP: true
+            };
+        }
+        throw new Error("Invalid IP location data");
+    } catch (error) {
+        console.warn("IP Location failed, falling back to Browser GPS:", error);
+        return getBrowserLocation();
+    }
+};
+
+// Fallback: Browser-based Geolocation API
+export const getBrowserLocation = (timeoutMs = 5000) => {
     return new Promise((resolve, reject) => {
         if (!navigator.geolocation) {
             reject(new Error("Geolocation is not supported by your browser"));
@@ -12,6 +39,7 @@ export const getCurrentLocation = () => {
                     latitude: position.coords.latitude,
                     longitude: position.coords.longitude,
                     accuracy: position.coords.accuracy,
+                    isIP: false
                 });
             },
             (error) => {
@@ -31,12 +59,16 @@ export const getCurrentLocation = () => {
             },
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
+                timeout: timeoutMs,
                 maximumAge: 0,
             }
         );
     });
 };
+
+// Alias for compatibility
+export const getPreciseLocation = getCurrentLocation;
+export const getLocationByIP = getCurrentLocation;
 
 // Reverse geocode coordinates to address using Nominatim (OpenStreetMap)
 export const getAddressFromCoords = async (latitude, longitude) => {

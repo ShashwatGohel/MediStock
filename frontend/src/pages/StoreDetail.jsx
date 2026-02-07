@@ -23,6 +23,11 @@ const StoreDetail = () => {
     const [userLocation, setUserLocation] = useState(null);
     const [selectedMedicine, setSelectedMedicine] = useState(null);
     const [showOrderModal, setShowOrderModal] = useState(false);
+    const [reviews, setReviews] = useState([]);
+    const [reviewsLoading, setReviewsLoading] = useState(true);
+    const [reviewStats, setReviewStats] = useState({ averageRating: 0, count: 0 });
+    const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
+    const [submittingReview, setSubmittingReview] = useState(false);
 
     useEffect(() => {
         // Get user location from localStorage
@@ -33,6 +38,7 @@ const StoreDetail = () => {
 
         fetchStoreDetails();
         fetchStoreMedicines();
+        fetchStoreReviews();
         recordVisit();
     }, [storeId]);
 
@@ -81,6 +87,59 @@ const StoreDetail = () => {
             console.error("Error fetching medicines:", err);
         } finally {
             setMedicinesLoading(false);
+        }
+    };
+
+    const fetchStoreReviews = async () => {
+        try {
+            setReviewsLoading(true);
+            const response = await fetch(`${API_URLS.REVIEWS}/store/${storeId}`);
+            const data = await response.json();
+            if (data.success) {
+                setReviews(data.reviews);
+                setReviewStats(data.stats);
+            }
+        } catch (err) {
+            console.error("Error fetching reviews:", err);
+        } finally {
+            setReviewsLoading(false);
+        }
+    };
+
+    const handleReviewSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            setSubmittingReview(true);
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Please log in to leave a review");
+                return;
+            }
+
+            const response = await fetch(`${API_URLS.REVIEWS}/add`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    storeId,
+                    rating: newReview.rating,
+                    comment: newReview.comment
+                })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setNewReview({ rating: 5, comment: "" });
+                fetchStoreReviews();
+            } else {
+                alert(data.message || "Failed to submit review");
+            }
+        } catch (err) {
+            console.error("Error submitting review:", err);
+        } finally {
+            setSubmittingReview(false);
         }
     };
 
@@ -193,17 +252,25 @@ const StoreDetail = () => {
                                             {store.phone && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <Phone className="w-4 h-4 flex-shrink-0" />
-                                                    <a href={`tel:${store.phone}`} className="hover:text-emerald-400 transition-colors">
-                                                        {store.phone}
-                                                    </a>
+                                                    {store.isOpen ? (
+                                                        <a href={`tel:${store.phone}`} className="hover:text-emerald-400 transition-colors">
+                                                            {store.phone}
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-gray-600 line-through">{store.phone}</span>
+                                                    )}
                                                 </div>
                                             )}
                                             {store.email && (
                                                 <div className="flex items-center gap-2 text-gray-400">
                                                     <Mail className="w-4 h-4 flex-shrink-0" />
-                                                    <a href={`mailto:${store.email}`} className="hover:text-emerald-400 transition-colors">
-                                                        {store.email}
-                                                    </a>
+                                                    {store.isOpen ? (
+                                                        <a href={`mailto:${store.email}`} className="hover:text-emerald-400 transition-colors">
+                                                            {store.email}
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-gray-600 line-through">{store.email}</span>
+                                                    )}
                                                 </div>
                                             )}
                                             {store.operatingHours && (
@@ -286,17 +353,24 @@ const StoreDetail = () => {
                                                         {medicine.name}
                                                     </h3>
                                                     {medicine.quantity > 0 && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setSelectedMedicine({ ...medicine, storeId: { _id: storeId, storeName: store.name } });
-                                                                setShowOrderModal(true);
-                                                            }}
-                                                            className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-emerald-500/20 flex items-center gap-1.5"
-                                                        >
-                                                            <ShoppingBag className="w-3 h-3" />
-                                                            Order Now
-                                                        </button>
+                                                        store.isOpen ? (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setSelectedMedicine({ ...medicine, storeId: { _id: storeId, storeName: store.name } });
+                                                                    setShowOrderModal(true);
+                                                                }}
+                                                                className="px-3 py-1 bg-emerald-500/20 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-emerald-500/20 flex items-center gap-1.5"
+                                                            >
+                                                                <ShoppingBag className="w-3 h-3" />
+                                                                Order Now
+                                                            </button>
+                                                        ) : (
+                                                            <span className="px-3 py-1 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold border border-red-500/20 flex items-center gap-1.5 cursor-not-allowed">
+                                                                <Clock className="w-3 h-3" />
+                                                                Store Closed
+                                                            </span>
+                                                        )
                                                     )}
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-400">
@@ -336,6 +410,108 @@ const StoreDetail = () => {
                                     </motion.div>
                                 ))
                             )}
+                        </div>
+                    </motion.div>
+
+                    {/* Reviews Section */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2 }}
+                        className="bg-[#121212] border border-white/5 rounded-2xl p-6"
+                    >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                    <Star className="w-6 h-6 text-yellow-500 fill-yellow-500" />
+                                    Ratings & Reviews
+                                </h2>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Based on {reviewStats.count} {reviewStats.count === 1 ? 'review' : 'reviews'}
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                                <span className="text-3xl font-bold text-white">{reviewStats.averageRating ? reviewStats.averageRating.toFixed(1) : "0.0"}</span>
+                                <div className="flex flex-col">
+                                    <div className="flex gap-0.5">
+                                        {[1, 2, 3, 4, 5].map((s) => (
+                                            <Star key={s} className={`w-3 h-3 ${s <= Math.round(reviewStats.averageRating) ? "text-yellow-500 fill-yellow-500" : "text-gray-600"}`} />
+                                        ))}
+                                    </div>
+                                    <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Average Rating</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Review Form */}
+                            <div className="bg-white/5 rounded-2xl p-6 border border-white/5 h-fit">
+                                <h3 className="text-lg font-bold text-white mb-4">Leave a Review</h3>
+                                <form onSubmit={handleReviewSubmit} className="space-y-4">
+                                    <div className="flex gap-2">
+                                        {[1, 2, 3, 4, 5].map((s) => (
+                                            <button
+                                                key={s}
+                                                type="button"
+                                                onClick={() => setNewReview({ ...newReview, rating: s })}
+                                                className={`p-2 rounded-lg transition-all ${newReview.rating >= s ? "text-yellow-500" : "text-gray-600"}`}
+                                            >
+                                                <Star className={`w-6 h-6 ${newReview.rating >= s ? "fill-yellow-500" : ""}`} />
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <textarea
+                                        value={newReview.comment}
+                                        onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                                        placeholder="Share your experience with this pharmacy..."
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all placeholder:text-gray-600 resize-none h-24"
+                                        required
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={submittingReview}
+                                        className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20"
+                                    >
+                                        {submittingReview ? "Submitting..." : "Submit Review"}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Review List */}
+                            <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
+                                {reviewsLoading ? (
+                                    <div className="text-center py-8">
+                                        <Loader className="w-6 h-6 text-emerald-500 animate-spin mx-auto mb-2" />
+                                        <p className="text-gray-500 text-sm">Loading reviews...</p>
+                                    </div>
+                                ) : reviews.length === 0 ? (
+                                    <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
+                                        <Star className="w-10 h-10 text-gray-700 mx-auto mb-3 opacity-50" />
+                                        <p className="text-gray-500 text-sm italic">No reviews yet. Be the first to rate!</p>
+                                    </div>
+                                ) : (
+                                    reviews.map((review) => (
+                                        <div key={review._id} className="p-4 rounded-xl bg-white/[0.03] border border-white/5">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">{review.userId?.name || "Anonymous"}</h4>
+                                                    <div className="flex gap-0.5 mt-0.5">
+                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                            <Star key={s} className={`w-2.5 h-2.5 ${s <= review.rating ? "text-yellow-500 fill-yellow-500" : "text-gray-700"}`} />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <span className="text-[10px] text-gray-600">
+                                                    {new Date(review.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-sm text-gray-400 leading-relaxed italic">
+                                                "{review.comment}"
+                                            </p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </motion.div>
                 </div>

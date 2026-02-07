@@ -3,12 +3,14 @@ import { motion } from "framer-motion";
 
 const StoreCard = ({ store, onClick, onOrderClick, index = 0 }) => {
     const getStatusColor = () => {
-        if (!store.isOpen) return "text-red-400";
+        if (!store.isOpen && store.isOpen !== undefined) return "text-red-400";
+        if (!store.isStoreOpen && store.isStoreOpen !== undefined) return "text-red-400";
         return "text-green-400";
     };
 
     const getStatusText = () => {
-        if (!store.isOpen) return "Closed";
+        const isOpen = store.isOpen !== undefined ? store.isOpen : store.isStoreOpen;
+        if (!isOpen) return "Closed";
         return store.operatingHours || "Open";
     };
 
@@ -56,6 +58,16 @@ const StoreCard = ({ store, onClick, onOrderClick, index = 0 }) => {
                                 <Clock className="w-3 h-3" />
                                 {getStatusText()}
                             </span>
+
+                            {store.rating > 0 && (
+                                <>
+                                    <span className="text-gray-600">•</span>
+                                    <span className="flex items-center gap-1 text-yellow-500">
+                                        <Star className="w-3 h-3 fill-yellow-500" />
+                                        {store.rating.toFixed(1)}
+                                    </span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -88,12 +100,19 @@ const StoreCard = ({ store, onClick, onOrderClick, index = 0 }) => {
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        if (onOrderClick) onOrderClick({ ...med, storeId: { _id: store.id, storeName: store.name } });
+                                        const isOpen = store.isOpen !== undefined ? store.isOpen : store.isStoreOpen;
+                                        if (isOpen && onOrderClick) {
+                                            onOrderClick({ ...med, storeId: { _id: store.id, storeName: store.name } });
+                                        }
                                     }}
-                                    className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white rounded-lg text-[10px] font-bold transition-all border border-emerald-500/10 flex items-center gap-1.5 whitespace-nowrap"
+                                    disabled={!(store.isOpen !== undefined ? store.isOpen : store.isStoreOpen)}
+                                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border flex items-center gap-1.5 whitespace-nowrap ${(store.isOpen !== undefined ? store.isOpen : store.isStoreOpen)
+                                            ? 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white border-emerald-500/10'
+                                            : 'bg-red-500/10 text-red-400 border-red-500/20 cursor-not-allowed opacity-50'
+                                        }`}
                                 >
                                     <ShoppingBag className="w-3 h-3" />
-                                    Order Now
+                                    {(store.isOpen !== undefined ? store.isOpen : store.isStoreOpen) ? 'Order Now' : 'Closed'}
                                 </button>
                             </div>
                         ))}

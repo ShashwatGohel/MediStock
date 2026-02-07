@@ -48,7 +48,19 @@ const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
 
     const updateItem = (index, field, value) => {
         const updated = [...billItems];
-        updated[index][field] = value;
+        if (field === "quantity") {
+            if (value === "") {
+                updated[index][field] = "";
+            } else {
+                const num = parseInt(value);
+                if (!isNaN(num)) {
+                    const medicine = getMedicine(updated[index].medicineId);
+                    updated[index][field] = Math.min(medicine?.quantity || 999, num);
+                }
+            }
+        } else {
+            updated[index][field] = value;
+        }
         setBillItems(updated);
     };
 
@@ -59,8 +71,9 @@ const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
     const calculateTotal = () => {
         return billItems.reduce((total, item) => {
             const medicine = getMedicine(item.medicineId);
-            if (medicine && item.quantity > 0) {
-                return total + (medicine.price * item.quantity);
+            const qty = parseInt(item.quantity) || 0;
+            if (medicine && qty > 0) {
+                return total + (medicine.price * qty);
             }
             return total;
         }, 0);
@@ -238,7 +251,7 @@ const CreateBillModal = ({ isOpen, onClose, onSuccess }) => {
                                                             <input
                                                                 type="number"
                                                                 value={item.quantity}
-                                                                onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
+                                                                onChange={(e) => updateItem(index, "quantity", e.target.value)}
                                                                 min="1"
                                                                 max={medicine?.quantity || 999}
                                                                 placeholder="Qty"

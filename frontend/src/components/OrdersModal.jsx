@@ -26,11 +26,10 @@ const OrdersModal = ({ isOpen, onClose }) => {
             if (data.success) {
                 // Filter for today's orders
                 const today = new Date();
-                today.setHours(0, 0, 0, 0);
+                const todayStr = today.toISOString().split('T')[0];
                 const todaysOrders = data.orders.filter(order => {
-                    const orderDate = new Date(order.createdAt);
-                    orderDate.setHours(0, 0, 0, 0);
-                    return orderDate.getTime() === today.getTime();
+                    const orderDateStr = new Date(order.createdAt).toISOString().split('T')[0];
+                    return orderDateStr === todayStr;
                 });
                 setOrders(todaysOrders);
             }

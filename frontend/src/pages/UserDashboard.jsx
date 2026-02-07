@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
-    Search, MapPin, Bell, User, History, Upload, FileText,
+    Search, MapPin, User, History, Upload, FileText,
     Navigation, Filter, HeartPulse, ChevronRight, Star, Clock,
-    AlertCircle, Phone, Activity, Sparkles, Thermometer, Pill,
-    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff, X, PlusCircle, Settings, Heart
+    Activity, Sparkles, Thermometer, Pill,
+    Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff, X, PlusCircle, Settings, Heart, Map,
+    Check, Trash, ShoppingBag, Eye, Info
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 import OrderModal from "../components/OrderModal";
 import RangeSlider from "../components/RangeSlider";
 import StoreCard from "../components/StoreCard";
+import LocationMarker from "../components/LocationMarker";
 import { getCurrentLocation, saveLocation, getSavedLocation, getAddressFromCoords } from "../utils/locationUtils";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -31,6 +34,17 @@ const RecenterMap = ({ position }) => {
 // OpenStreetMap/Leaflet doesn't use the same style array as Google Maps
 // We use a dark tile layer instead to achieve the same look.
 
+const categories = [
+    { name: "Medicines", icon: Pill, color: "text-blue-400", bg: "bg-blue-500/10" },
+    { name: "First Aid", icon: Activity, color: "text-red-400", bg: "bg-red-500/10" },
+    { name: "Skincare", icon: Sparkles, color: "text-purple-400", bg: "bg-purple-500/10" },
+    { name: "Baby Care", icon: Smile, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+    { name: "Devices", icon: Thermometer, color: "text-orange-400", bg: "bg-orange-500/10" },
+    { name: "Fitness", icon: Dumbbell, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+];
+
+const recentSearches = ["Paracetamol 500mg", "Ibuprofen 400mg", "Azithromycin 500mg", "Cetirizine 10mg"];
+
 const UserDashboard = () => {
     const navigate = useNavigate();
     const [selectedMedicine, setSelectedMedicine] = useState(null);
@@ -39,11 +53,11 @@ const UserDashboard = () => {
     const [selectedStore, setSelectedStore] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [user, setUser] = useState(null);
-    const [showSOS, setShowSOS] = useState(false);
 
     // Location and stores state
     const [userLocation, setUserLocation] = useState(null);
     const [userAddress, setUserAddress] = useState("");
+    const [locationAccuracy, setLocationAccuracy] = useState(null);
     const [showMap, setShowMap] = useState(false);
     const [searchRadius, setSearchRadius] = useState(5);
     const [nearbyStores, setNearbyStores] = useState([]);
@@ -82,19 +96,56 @@ const UserDashboard = () => {
         }
     }, [userLocation, searchRadius]);
 
+    // Real-time polling for store status updates (every 30 seconds)
+    useEffect(() => {
+        if (!userLocation) return;
+
+        const pollInterval = setInterval(() => {
+            fetchNearbyStores();
+        }, 30000); // 30 seconds
+
+        return () => clearInterval(pollInterval);
+    }, [userLocation, searchRadius]);
+
     const initializeLocation = async () => {
         try {
             setLoadingLocation(true);
             setLocationError("");
 
-            // Get current location first for freshness
+            // 1. Check if we already have a fresh location in session storage
+            const saved = getSavedLocation();
+            if (saved && saved.latitude && saved.longitude) {
+                const isFresh = Date.now() - (saved.timestamp || 0) < 30 * 60 * 1000; // 30 mins
+                if (isFresh) {
+                    setUserLocation(saved);
+                    setLoadingLocation(false);
+
+                    // Get address from coords in background if missing
+                    if (!saved.address) {
+                        getAddressFromCoords(saved.latitude, saved.longitude).then(addr => {
+                            setUserAddress(addr);
+                        });
+                    } else {
+                        setUserAddress(saved.address);
+                    }
+                    return; // Skip fresh fetch
+                }
+            }
+
+            // 2. Otherwise get current location (IP-based)
             const location = await getCurrentLocation();
             setUserLocation(location);
+            setLocationAccuracy(location.accuracy);
             saveLocation(location.latitude, location.longitude);
 
-            // Get address for feedback
-            const address = await getAddressFromCoords(location.latitude, location.longitude);
-            setUserAddress(address);
+            if (location.address) {
+                setUserAddress(location.address);
+            } else {
+                const address = await getAddressFromCoords(location.latitude, location.longitude);
+                setUserAddress(address);
+            }
+
+            toast.success("📍 Location detected successfully!");
         } catch (error) {
             console.error("Location error:", error);
 
@@ -105,11 +156,25 @@ const UserDashboard = () => {
                 const oneHour = 60 * 60 * 1000;
                 if (Date.now() - (saved.timestamp || 0) < oneHour) {
                     setUserLocation(saved);
+                    toast.info("Using your last known location");
                     return;
                 }
             }
 
             setLocationError(error.message);
+
+            // Show user-friendly error message
+            let errorMessage = "Unable to get your location";
+            if (error.message.includes("permission")) {
+                errorMessage = "Location permission denied. Please enable location access in your browser settings.";
+            } else if (error.message.includes("unavailable")) {
+                errorMessage = "Location unavailable. Please check your GPS signal.";
+            } else if (error.message.includes("timeout")) {
+                errorMessage = "Location request timed out. Please try again.";
+            }
+
+            toast.error(errorMessage);
+
             // Use default location (Mumbai) as fallback
             const defaultLocation = { latitude: 19.0760, longitude: 72.8777 };
             setUserLocation(defaultLocation);
@@ -253,16 +318,6 @@ const UserDashboard = () => {
         navigate(`/store/${storeId}`);
     };
 
-    const recentSearches = ["Dolo 650", "Azithromycin", "Vitamin C", "Cotton Bandage"];
-
-    const categories = [
-        { name: "Medicines", icon: Pill, color: "text-blue-400", bg: "bg-blue-500/10" },
-        { name: "First Aid", icon: Activity, color: "text-red-400", bg: "bg-red-500/10" },
-        { name: "Skincare", icon: Sparkles, color: "text-purple-400", bg: "bg-purple-500/10" },
-        { name: "Baby Care", icon: Smile, color: "text-yellow-400", bg: "bg-yellow-500/10" },
-        { name: "Devices", icon: Thermometer, color: "text-orange-400", bg: "bg-orange-500/10" },
-        { name: "Fitness", icon: Dumbbell, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    ];
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-['Outfit'] selection:bg-emerald-500/30 overflow-x-hidden relative pb-20">
@@ -286,11 +341,6 @@ const UserDashboard = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button className="p-2 text-gray-400 hover:text-white transition-colors relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-black"></span>
-                        </button>
-                        <div className="h-8 w-px bg-white/10 mx-1"></div>
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-xs font-bold text-black border border-white/10">
                                 {user ? user.name.charAt(0).toUpperCase() : "U"}
@@ -340,9 +390,15 @@ const UserDashboard = () => {
                             </button>
                             <button
                                 onClick={() => setShowLocationModal(true)}
-                                className="text-xs text-gray-500 hover:text-white mb-1 px-2 py-0.5 rounded border border-white/5 hover:border-white/20 transition-all"
+                                className="text-xs text-gray-500 hover:text-white mb-1 px-2 py-0.5 rounded border border-white/5 hover:border-white/20 transition-all flex items-center gap-1"
                             >
                                 Change
+                                {locationAccuracy && (
+                                    <span className="ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 bg-indigo-500/10 text-indigo-400">
+                                        <Activity className="w-2.5 h-2.5" />
+                                        IP
+                                    </span>
+                                )}
                             </button>
                         </div>
                         <h1 className="text-3xl sm:text-4xl font-bold text-white">
@@ -352,47 +408,54 @@ const UserDashboard = () => {
                     </div>
                 </motion.div>
 
-                {/* 🔍 Primary Search Section */}
+                {/* 🔍 Primary Search & Hero Section */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="relative"
+                    className="relative bg-[#121212] border border-white/5 rounded-3xl p-8 overflow-hidden"
                 >
-                    <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
-                        <div className="relative bg-[#121212] border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl">
-                            <div className="pl-4 pr-3 text-gray-400">
-                                <Search className="w-6 h-6" />
-                            </div>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={handleSearch}
-                                onKeyPress={handleKeyPress}
-                                placeholder="Search for medicines, health products..."
-                                className="w-full bg-transparent text-lg text-white placeholder:text-gray-500 focus:outline-none py-3"
-                            />
-                            <button
-                                onClick={handleSearchClick}
-                                className="bg-emerald-500 hover:bg-emerald-400 text-black px-6 py-3 rounded-xl font-bold transition-all transform active:scale-95 flex items-center gap-2"
-                            >
-                                Search
-                            </button>
-                        </div>
-                    </div>
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] -mr-32 -mt-32" />
 
-                    <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                            System Online
+                    <div className="relative z-10 max-w-2xl">
+                        <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 leading-tight">
+                            Find medicines <span className="text-emerald-400">near you</span> in seconds.
+                        </h1>
+                        <p className="text-gray-400 text-lg mb-8">
+                            Search from thousands of verified local pharmacies across your city.
+                        </p>
+
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl blur opacity-20 group-focus-within:opacity-40 transition-opacity duration-300"></div>
+                            <div className="relative bg-[#0a0a0a] border border-white/10 rounded-2xl p-1.5 flex items-center shadow-2xl">
+                                <div className="pl-4 pr-2 text-gray-500">
+                                    <Search className="w-5 h-5" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={handleSearch}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder="Search for medicines like 'Dolo 650'..."
+                                    className="w-full bg-transparent text-lg text-white placeholder:text-gray-600 focus:outline-none py-3"
+                                />
+                                <button
+                                    onClick={handleSearchClick}
+                                    className="bg-emerald-500 hover:bg-emerald-400 text-black px-8 py-3 rounded-xl font-bold transition-all transform active:scale-95 flex items-center gap-2 shadow-lg shadow-emerald-500/20"
+                                >
+                                    Find Now
+                                </button>
+                            </div>
                         </div>
-                        <span className="text-gray-500 hidden sm:inline">•</span>
-                        <div className="text-gray-400">
-                            <span className="text-white font-semibold">{nearbyStores.length}</span> {searchQuery.trim() ? `active pharmacies with "${searchQuery}"` : "active pharmacies nearby"}
+
+                        <div className="mt-6 flex flex-wrap items-center gap-6">
+                            <div className="flex items-center gap-2 text-emerald-400 font-medium text-sm">
+                                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                {nearbyStores.length} Pharmacies Nearby
+                            </div>
+                            <div className="h-4 w-px bg-white/10 hidden sm:block" />
+                            <div className="text-gray-500 text-sm">
+                                Search radius: <span className="text-white font-bold">{searchRadius}km</span>
+                            </div>
                         </div>
                     </div>
                 </motion.div>
@@ -403,7 +466,6 @@ const UserDashboard = () => {
                         <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.15 }}
                             className="bg-[#121212] border border-white/5 rounded-2xl p-6"
                         >
                             <RangeSlider
@@ -418,33 +480,12 @@ const UserDashboard = () => {
                 }
 
 
-                {/* ✨ Promo Banner */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 p-6 md:p-8 flex items-center justify-between"
-                >
-                    <div className="relative z-10 max-w-lg">
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-white text-xs font-bold uppercase tracking-wider mb-3">
-                            <Zap className="w-3 h-3 fill-yellow-400 text-yellow-400" /> New Offer
-                        </div>
-                        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Get 20% Off Your First Order</h2>
-                        <p className="text-indigo-100 mb-6">Use code <span className="font-mono bg-white/20 px-2 py-0.5 rounded text-white font-bold">MEDIFIRST</span> at checkout.</p>
-                        <button className="bg-white text-indigo-600 px-5 py-2.5 rounded-lg font-bold hover:bg-gray-100 transition-colors">
-                            Claim Now
-                        </button>
-                    </div>
-                    <div className="absolute right-0 top-0 h-full w-1/3 opacity-20 bg-[url('https://images.unsplash.com/photo-1585435557343-3b092031a831?auto=format&fit=crop&q=80&w=600')] bg-cover bg-center mix-blend-overlay"></div>
-                    <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
-                </motion.div>
 
                 {/* 🏷️ Shop by Category */}
                 <div id="categories-section" className="space-y-6">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
                     >
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold text-white">Shop by Category</h2>
@@ -466,50 +507,52 @@ const UserDashboard = () => {
                     </motion.div>
                 </div>
 
-                {/* ⚡ Quick Actions (Already Implemented) & Nearby Stores */}
+                {/* ⚡ Daily Essentials & Nearby Perspective */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
                     <motion.div
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="lg:col-span-2"
+                        className="lg:col-span-2 space-y-8"
                     >
-                        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                            Quick Actions
-                        </h2>
-                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                            {[
-                                { icon: Upload, label: "Upload Rx", path: "/upload-rx", color: "text-amber-400", bg: "bg-amber-400/10", border: "border-amber-400/20" },
-                                { icon: History, label: "Past Orders", path: "/past-orders", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
-                                { icon: PlusCircle, label: "Shop Now", onClick: () => document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' }), color: "text-indigo-400", bg: "bg-indigo-400/10", border: "border-indigo-400/20" },
-                                { icon: Heart, label: "Favorites", path: "/saved-stores", color: "text-rose-400", bg: "bg-rose-400/10", border: "border-rose-400/20" },
-                                { icon: Navigation, label: "Map View", path: "/map-view", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" }
-                            ].map((action, i) => (
-                                <button
-                                    key={i}
-                                    onClick={action.path ? () => navigate(action.path) : action.onClick}
-                                    className={`flex-col items-center justify-center gap-3 p-6 rounded-2xl border ${action.border} ${action.bg} hover:bg-opacity-20 transition-all hover:-translate-y-1 group flex`}
-                                >
-                                    <action.icon className={`w-8 h-8 ${action.color} group-hover:scale-110 transition-transform`} />
-                                    <span className="font-semibold text-white/90 text-sm">{action.label}</span>
-                                </button>
-                            ))}
+                        {/* Quick Access Grid */}
+                        <div>
+                            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-yellow-400" /> Daily Essentials
+                            </h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {[
+                                    { icon: Pill, label: "My Med Vault", path: "/medicine-vault", color: "text-indigo-400", bg: "bg-indigo-400/10", border: "border-indigo-400/20" },
+                                    { icon: Upload, label: "Upload Rx", path: "/upload-rx", color: "text-emerald-400", bg: "bg-emerald-400/10", border: "border-emerald-400/20" },
+                                    { icon: History, label: "Order History", path: "/past-orders", color: "text-blue-400", bg: "bg-blue-400/10", border: "border-blue-400/20" },
+                                    { icon: Map, label: "Live Map", onClick: () => setShowMap(true), color: "text-purple-400", bg: "bg-purple-400/10", border: "border-purple-400/20" },
+                                ].map((action, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={action.path ? () => navigate(action.path) : action.onClick}
+                                        className={`flex flex-col items-center justify-center gap-4 p-6 rounded-2xl border ${action.border} ${action.bg} hover:bg-opacity-20 transition-all hover:-translate-y-1 group active:scale-95`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-xl bg-black/40 flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                            <action.icon className={`w-6 h-6 ${action.color}`} />
+                                        </div>
+                                        <span className="font-bold text-white text-sm whitespace-nowrap">{action.label}</span>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
-                        {/* Recent Searches (Moved here for better flow) */}
-                        <div className="mt-8">
-                            <div className="flex items-center gap-2 mb-3 text-gray-400 text-sm font-medium uppercase tracking-wider">
-                                <History className="w-4 h-4" /> Recent Searches
-                            </div>
-                            <div className="flex flex-wrap gap-2">
+                        {/* Recent Searches */}
+                        <div>
+                            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                <History className="w-4 h-4" /> Jump Back In
+                            </h2>
+                            <div className="flex flex-wrap gap-3">
                                 {recentSearches.map((item, idx) => (
                                     <button
                                         key={idx}
-                                        onClick={() => setSearchQuery(item)}
-                                        className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-sm text-gray-300 transition-colors"
+                                        onClick={() => { setSearchQuery(item); handleSearchClick(); }}
+                                        className="px-5 py-2.5 bg-[#121212] hover:bg-white/5 border border-white/5 rounded-xl text-sm text-gray-300 transition-all hover:border-white/20 active:scale-95 flex items-center gap-2"
                                     >
-                                        {item}
+                                        <Search className="w-3.5 h-3.5 opacity-50" /> {item}
                                     </button>
                                 ))}
                             </div>
@@ -519,7 +562,6 @@ const UserDashboard = () => {
                     <motion.div
                         initial={{ opacity: 0, x: 10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 }}
                     >
                         <div ref={resultsRef} className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
@@ -568,38 +610,6 @@ const UserDashboard = () => {
                 </div>
 
 
-                {/* 🚨 SOS Floating Button */}
-                <div className="fixed bottom-6 right-6 z-50">
-                    <AnimatePresence>
-                        {showSOS && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10, scale: 0.9 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                                className="absolute bottom-16 right-0 mb-2 w-64 bg-[#1a1a1a] border border-red-500/20 rounded-2xl shadow-2xl p-4"
-                            >
-                                <h3 className="text-red-500 font-bold mb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Emergency</h3>
-                                <p className="text-gray-400 text-xs mb-3">Call ambulance or nearest hospital immediately.</p>
-                                <div className="space-y-2">
-                                    <button className="w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-500 rounded-lg text-sm font-bold flex items-center justify-center gap-2">
-                                        <Phone className="w-4 h-4" /> 102 (Ambulance)
-                                    </button>
-                                    <button className="w-full py-2 bg-white/5 hover:bg-white/10 text-white rounded-lg text-sm font-bold">
-                                        Nearby Hospital
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    <button
-                        onClick={() => setShowSOS(!showSOS)}
-                        className="w-14 h-14 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-[0_0_30px_rgba(239,68,68,0.4)] flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 relative"
-                    >
-                        <span className="absolute inset-0 rounded-full border-2 border-red-400 animate-ping opacity-75"></span>
-                        <AlertCircle className="w-6 h-6 relative z-10" />
-                    </button>
-                </div>
 
                 {/* 🗺️ Full Screen Map Modal */}
                 <AnimatePresence>
