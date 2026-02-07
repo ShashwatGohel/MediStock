@@ -76,8 +76,6 @@ It helps store owners manage inventory, orders, and billing while allowing users
 | **Backend**  | Render / Railway / VPS | API server |
 | **Database** | MongoDB Atlas | Cloud database |
 
-> ⚠️ The backend may take a few seconds to respond if hosted on a free-tier service (cold start).
-
 ---
 
 ## ⚙️ Installation & Local Setup
@@ -187,4 +185,4 @@ This project is licensed under the **ISC License**.
 ## 👨‍💻 Developer
 
 Built with ❤️ by **Shashwat Gohel**  
-B.Tech CSE Student | Full Stack Developer
+B.Tech CSE Student | Full Stack Developer | Ahmedabad University
