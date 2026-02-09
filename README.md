@@ -73,7 +73,7 @@ It helps store owners manage inventory, orders, and billing while allowing users
 | Service      | Platform | Description |
 |-------------|----------|-------------|
 | **Frontend** | Vercel   | React app hosting |
-| **Backend**  | Render / Railway / VPS | API server |
+| **Backend**  | Render  | API server |
 | **Database** | MongoDB Atlas | Cloud database |
 
 ---
