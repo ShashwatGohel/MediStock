@@ -5,7 +5,7 @@ import {
     Navigation, Filter, HeartPulse, ChevronRight, Star, Clock,
     Activity, Sparkles, Thermometer, Pill,
     Stethoscope, Smile, Dumbbell, Zap, Loader, MapPinOff, X, PlusCircle, Settings, Heart, Map,
-    Check, Trash, ShoppingBag, Eye, Info
+    Check, Trash, ShoppingBag, Eye, Info, MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -13,6 +13,9 @@ import OrderModal from "../components/OrderModal";
 import RangeSlider from "../components/RangeSlider";
 import StoreCard from "../components/StoreCard";
 import LocationMarker from "../components/LocationMarker";
+import ChatList from "../components/ChatList";
+import ChatWindow from "../components/ChatWindow";
+import socket from "../utils/socket";
 import { getCurrentLocation, saveLocation, getSavedLocation, getAddressFromCoords } from "../utils/locationUtils";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -69,6 +72,8 @@ const UserDashboard = () => {
     const [loadingOrders, setLoadingOrders] = useState(false);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [savedStoreIds, setSavedStoreIds] = useState([]);
+    const [isChatListOpen, setIsChatListOpen] = useState(false);
+    const [selectedChatRoom, setSelectedChatRoom] = useState(null);
 
     const location = useLocation();
 
@@ -239,7 +244,19 @@ const UserDashboard = () => {
         if (user) {
             fetchUserOrders();
             fetchSavedStores();
+
+            // Connect socket for chat notifications
+            if (!socket.connected) socket.connect();
+            socket.on("new_message_notification", (data) => {
+                toast.success("New message received!", {
+                    icon: "💬",
+                    style: { background: "#121212", color: "#fff", border: "1px solid rgba(16, 185, 129, 0.2)" }
+                });
+            });
         }
+        return () => {
+            socket.off("new_message_notification");
+        };
     }, [user]);
 
     const handleLogout = () => {
@@ -861,6 +878,51 @@ const UserDashboard = () => {
                                 </button>
                             </div>
                         </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+            {/* 💬 Floating Chat Button */}
+            <div className="fixed bottom-8 right-8 z-[1000] flex flex-col items-end gap-4">
+                <AnimatePresence>
+                    {isChatListOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                            className="w-80 sm:w-96 shadow-2xl"
+                        >
+                            <ChatList
+                                role="user"
+                                onSelectChat={(room) => {
+                                    setSelectedChatRoom(room);
+                                    setIsChatListOpen(false);
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <button
+                    onClick={() => setIsChatListOpen(!isChatListOpen)}
+                    className="w-14 h-14 bg-emerald-500 text-black rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative"
+                >
+                    <MessageSquare className="w-6 h-6" />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-[#0a0a0a] hidden"></span>
+                </button>
+            </div>
+
+            {/* Chat Window Overlay */}
+            <AnimatePresence>
+                {selectedChatRoom && (
+                    <div className="fixed bottom-8 right-8 z-[2000] w-80 sm:w-[400px]">
+                        <ChatWindow
+                            roomId={selectedChatRoom._id}
+                            recipientId={selectedChatRoom.store?._id || selectedChatRoom.store}
+                            recipientName={selectedChatRoom.store?.storeName || "Store"}
+                            recipientRole="store"
+                            currentUser={user}
+                            onClose={() => setSelectedChatRoom(null)}
+                        />
                     </div>
                 )}
             </AnimatePresence>

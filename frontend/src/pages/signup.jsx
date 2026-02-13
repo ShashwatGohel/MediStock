@@ -4,6 +4,7 @@ import { User, Building2, ArrowRight, FileText, MapPin, Phone, Mail, Lock, Store
 import { motion, AnimatePresence } from "framer-motion";
 import { getCurrentLocation } from "../utils/locationUtils";
 import { API_URLS } from "../api";
+import toast from "react-hot-toast";
 
 const Signup = () => {
     const navigate = useNavigate();
@@ -37,6 +38,12 @@ const Signup = () => {
 
     const [locationLoading, setLocationLoading] = useState(false);
     const [locationError, setLocationError] = useState("");
+    const [error, setError] = useState("");
+
+    const [showVerification, setShowVerification] = useState(false);
+    const [verificationEmail, setVerificationEmail] = useState("");
+    const [otp, setOtp] = useState("");
+    const [verificationLoading, setVerificationLoading] = useState(false);
 
     const handleUserChange = (e) => {
         setUserFormData({ ...userFormData, [e.target.name]: e.target.value });
@@ -45,8 +52,6 @@ const Signup = () => {
     const handleStoreChange = (e) => {
         setStoreFormData({ ...storeFormData, [e.target.name]: e.target.value });
     };
-
-    const [error, setError] = useState("");
 
     const handleGetLocation = async () => {
         try {
@@ -114,16 +119,21 @@ const Signup = () => {
             const data = await response.json();
 
             if (response.ok) {
-                // Auto-login
-                localStorage.setItem("token", data.token);
-                localStorage.setItem("role", data.role);
-                localStorage.setItem("user", JSON.stringify(data.user));
-                localStorage.setItem("isLoggedIn", "true");
-
-                if (data.role === "store") {
-                    navigate("/owner-dashboard");
+                if (data.requiresVerification) {
+                    setVerificationEmail(data.email);
+                    setShowVerification(true);
+                    toast.success("OTP sent to your email!");
                 } else {
-                    navigate("/user-dashboard");
+                    localStorage.setItem("token", data.token);
+                    localStorage.setItem("role", data.role);
+                    localStorage.setItem("user", JSON.stringify(data.user));
+                    localStorage.setItem("isLoggedIn", "true");
+
+                    if (data.role === "store") {
+                        navigate("/owner-dashboard");
+                    } else {
+                        navigate("/user-dashboard");
+                    }
                 }
             } else {
                 setError(data.message || "Signup failed");
@@ -134,14 +144,51 @@ const Signup = () => {
         }
     };
 
+    const handleVerifyOTP = async (e) => {
+        e.preventDefault();
+        setVerificationLoading(true);
+        setError("");
+
+        try {
+            const response = await fetch(`${API_URLS.AUTH}/verify-otp`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email: verificationEmail, otp }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("role", data.role);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                localStorage.setItem("isLoggedIn", "true");
+
+                toast.success("Account verified successfully!");
+                if (data.role === "store") {
+                    navigate("/owner-dashboard");
+                } else {
+                    navigate("/user-dashboard");
+                }
+            } else {
+                setError(data.message || "Verification failed");
+            }
+        } catch (err) {
+            console.error("Verification error:", err);
+            setError("Something went wrong. Please try again.");
+        } finally {
+            setVerificationLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center p-4 font-['Outfit'] relative overflow-hidden">
-
             {/* Background Gradients */}
             <div className={`absolute top-[-20%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] rounded-full blur-[120px] opacity-20 transition-colors duration-1000 ${activeTab === 'user' ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
 
             <div className="w-full max-w-lg z-10">
-
                 {/* Header */}
                 <div className="text-center mb-8">
                     <Link to="/home" className="inline-block mb-4">
@@ -182,15 +229,58 @@ const Signup = () => {
                 <div className="bg-[#121212]/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative">
                     <div className="p-8">
                         <AnimatePresence mode="wait">
+                            {showVerification ? (
+                                <motion.div
+                                    key="verification-step"
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    className="w-full text-center"
+                                >
+                                    <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                                        <Mail className="w-8 h-8 text-emerald-500" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold mb-2">Verify Email</h2>
+                                    <p className="text-gray-400 text-sm mb-8">
+                                        We've sent a 6-digit code to <br />
+                                        <span className="text-white font-semibold">{verificationEmail}</span>
+                                    </p>
 
-                            {/* USER FORM CONTENT */}
-                            {activeTab === "user" ? (
+                                    <form onSubmit={handleVerifyOTP} className="space-y-6">
+                                        <div className="relative group">
+                                            <input
+                                                type="text"
+                                                maxLength="6"
+                                                placeholder="0 0 0 0 0 0"
+                                                value={otp}
+                                                onChange={(e) => setOtp(e.target.value)}
+                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-4 text-center text-3xl font-bold tracking-[0.5em] focus:outline-none focus:border-emerald-500 transition-all placeholder:text-gray-700"
+                                                required
+                                            />
+                                        </div>
+
+                                        <button
+                                            disabled={verificationLoading}
+                                            className="w-full py-4 bg-emerald-500 text-black rounded-xl font-bold hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {verificationLoading ? <Loader className="w-5 h-5 animate-spin" /> : "Verify & Sign In"}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowVerification(false)}
+                                            className="text-gray-500 text-sm hover:text-white transition-colors"
+                                        >
+                                            Back to Signup
+                                        </button>
+                                    </form>
+                                </motion.div>
+                            ) : activeTab === "user" ? (
                                 <motion.form
                                     key="user-form"
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: 20 }}
-                                    transition={{ duration: 0.3 }}
                                     onSubmit={handleSignup}
                                     className="space-y-4"
                                 >
@@ -268,18 +358,15 @@ const Signup = () => {
                                     </div>
                                 </motion.form>
                             ) : (
-                                /* STORE FORM CONTENT */
                                 <motion.form
                                     key="store-form"
                                     initial={{ opacity: 0, x: 20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -20 }}
-                                    transition={{ duration: 0.3 }}
                                     onSubmit={handleSignup}
                                     className="space-y-4"
                                 >
                                     <div className="h-[400px] overflow-y-auto pr-2 scrollbar-hide space-y-4 -mr-2">
-
                                         {/* Store Info Section */}
                                         <div className="bg-white/5 rounded-xl p-4 border border-white/5">
                                             <h3 className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -415,23 +502,7 @@ const Signup = () => {
                                                         </>
                                                     )}
                                                 </button>
-
-                                                {locationError && (
-                                                    <p className="text-red-400 text-xs">{locationError}</p>
-                                                )}
-
-                                                {storeFormData.latitude && storeFormData.longitude && (
-                                                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
-                                                        <p className="text-green-400 text-xs font-semibold mb-1 flex items-center gap-1">
-                                                            <CheckCircle2 className="w-3 h-3" />
-                                                            Location Captured
-                                                        </p>
-                                                        <p className="text-gray-400 text-xs font-mono">
-                                                            {parseFloat(storeFormData.latitude).toFixed(6)}, {parseFloat(storeFormData.longitude).toFixed(6)}
-                                                        </p>
-                                                    </div>
-                                                )}
-
+                                                {locationError && <p className="text-red-400 text-xs">{locationError}</p>}
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <input
                                                         name="latitude"
@@ -483,7 +554,6 @@ const Signup = () => {
                                                 />
                                             </div>
                                         </div>
-
                                     </div>
 
                                     <div className="pt-2">
@@ -503,7 +573,6 @@ const Signup = () => {
                         </div>
                     </div>
                 </div>
-
             </div>
         </div>
     );

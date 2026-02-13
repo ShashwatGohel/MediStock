@@ -9,6 +9,7 @@ export const API_URLS = {
     ORDERS: `${API_BASE_URL}/api/orders`,
     VAULT: `${API_BASE_URL}/api/vault`,
     REVIEWS: `${API_BASE_URL}/api/reviews`,
+    CHAT: `${API_BASE_URL}/api/chat`,
 };
 
 export default API_BASE_URL;

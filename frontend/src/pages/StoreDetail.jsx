@@ -3,10 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
     MapPin, Phone, Mail, Clock, Package, Search, ArrowLeft,
     Navigation, Building2, Tag, DollarSign, AlertCircle, Loader,
-    ShieldCheck, Star, ChevronRight, ShoppingBag
+    ShieldCheck, Star, ChevronRight, ShoppingBag, MessageSquare
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import OrderModal from "../components/OrderModal";
+import ChatWindow from "../components/ChatWindow";
 import { API_URLS } from "../api";
 
 const StoreDetail = () => {
@@ -28,6 +29,9 @@ const StoreDetail = () => {
     const [reviewStats, setReviewStats] = useState({ averageRating: 0, count: 0 });
     const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
     const [submittingReview, setSubmittingReview] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatRoom, setChatRoom] = useState(null);
+    const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem("user")));
 
     useEffect(() => {
         // Get user location from localStorage
@@ -103,6 +107,33 @@ const StoreDetail = () => {
             console.error("Error fetching reviews:", err);
         } finally {
             setReviewsLoading(false);
+        }
+    };
+
+    const handleStartChat = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            if (!token) {
+                alert("Please log in to chat with the store");
+                return;
+            }
+
+            const response = await fetch(`${API_URLS.CHAT}/start`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ storeId })
+            });
+
+            const data = await response.json();
+            if (data._id) {
+                setChatRoom(data);
+                setIsChatOpen(true);
+            }
+        } catch (error) {
+            console.error("Error starting chat:", error);
         }
     };
 
@@ -281,6 +312,13 @@ const StoreDetail = () => {
                                             )}
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={handleStartChat}
+                                        className="mt-4 flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg font-semibold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                                    >
+                                        <MessageSquare className="w-4 h-4" />
+                                        Chat with Pharmacist
+                                    </button>
                                 </div>
                             </div>
 
@@ -525,6 +563,21 @@ const StoreDetail = () => {
                     fetchStoreMedicines();
                 }}
             />
+
+            <AnimatePresence>
+                {isChatOpen && chatRoom && (
+                    <div className="fixed bottom-8 right-8 z-[1000] w-80 sm:w-[400px]">
+                        <ChatWindow
+                            roomId={chatRoom._id}
+                            recipientId={storeId}
+                            recipientName={store.name}
+                            recipientRole="store"
+                            currentUser={currentUser}
+                            onClose={() => setIsChatOpen(false)}
+                        />
+                    </div>
+                )}
+            </AnimatePresence>
 
             <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {

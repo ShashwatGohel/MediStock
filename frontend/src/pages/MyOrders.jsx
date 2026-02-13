@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { API_URLS } from "../api";
+import CountdownTimer from "../components/CountdownTimer";
 
 const MyOrders = () => {
     const navigate = useNavigate();
@@ -174,14 +175,26 @@ const MyOrders = () => {
                                 </div>
 
                                 {order.status === 'approved' && (
-                                    <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-start gap-3">
-                                        <AlertCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                                        <div>
-                                            <p className="text-sm font-bold text-emerald-400">Ready for pickup</p>
-                                            <p className="text-xs text-emerald-500/70 mt-1">
-                                                The store has verified and kept your medicines aside. Please visit the store with your prescription to finalize the purchase.
-                                            </p>
+                                    <div className="mt-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                                        <div className="flex items-start gap-3 mb-4">
+                                            <AlertCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-sm font-bold text-emerald-400">Ready for pickup</p>
+                                                <p className="text-xs text-emerald-500/70 mt-1">
+                                                    The store has verified and kept your medicines aside. Please visit the store with your prescription to finalize the purchase.
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        {order.preservationExpiresAt && (
+                                            <div className="flex items-center justify-between p-3 bg-black/20 rounded-lg border border-emerald-500/10">
+                                                <div className="flex items-center gap-2">
+                                                    <Clock3 className="w-4 h-4 text-emerald-500" />
+                                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Preservation Timer</span>
+                                                </div>
+                                                <CountdownTimer targetDate={order.preservationExpiresAt} />
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 

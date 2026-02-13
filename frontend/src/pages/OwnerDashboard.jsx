@@ -6,7 +6,7 @@ import {
     Truck, DollarSign, Users, Eye, ShieldCheck, HelpCircle,
     ChevronRight, ArrowUpRight, ArrowDownRight, Bell, Store, Clock,
     Building2, Tag, Trash2, Navigation, MapPinOff, Loader, Map, Table,
-    Zap, Command, Keyboard, CreditCard, Wallet, ShoppingCart, Activity
+    Zap, Command, Keyboard, CreditCard, Wallet, ShoppingCart, Activity, MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -18,12 +18,16 @@ import BillsModal from "../components/BillsModal";
 import OrdersModal from "../components/OrdersModal";
 import LowStockModal from "../components/LowStockModal";
 import VisitsModal from "../components/VisitsModal";
+import ChatList from "../components/ChatList";
+import ChatWindow from "../components/ChatWindow";
+import socket from "../utils/socket";
 import { getCurrentLocation, getAddressFromCoords } from "../utils/locationUtils";
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { ownerIcon } from "../utils/MapMarkerIcons";
 import { API_URLS } from "../api";
 import { io } from "socket.io-client";
+import CountdownTimer from "../components/CountdownTimer";
 
 const RecenterMap = ({ position }) => {
     const map = useMap();
@@ -69,6 +73,9 @@ const OwnerDashboard = () => {
     const [orderSearchQuery, setOrderSearchQuery] = useState("");
     const [error, setError] = useState("");
     const [orders, setOrders] = useState([]);
+    const [isChatListOpen, setIsChatListOpen] = useState(false);
+    const [selectedChatRoom, setSelectedChatRoom] = useState(null);
+    const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem("user")));
 
     // Quick Actions & Notifications
     const [quickSearchOpen, setQuickSearchOpen] = useState(false);
@@ -477,7 +484,23 @@ const OwnerDashboard = () => {
         if ('Notification' in window && Notification.permission === 'default') {
             Notification.requestPermission();
         }
-    }, []);
+
+        // Connect socket for chat notifications
+        if (currentUser) {
+            if (!socket.connected) socket.connect();
+            socket.on("new_message_notification", (data) => {
+                toast.success("New message received!", {
+                    icon: "💬",
+                    style: { background: "#121212", color: "#fff", border: "1px solid rgba(16, 185, 129, 0.2)" }
+                });
+                playNotificationSound();
+            });
+        }
+
+        return () => {
+            socket.off("new_message_notification");
+        };
+    }, [currentUser]);
 
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-gray-200 font-['Outfit'] relative pb-20">
@@ -683,7 +706,15 @@ const OwnerDashboard = () => {
                                         </div>
                                         <div className="flex gap-2">
                                             {order.status === 'pending' && <button onClick={() => handleUpdateOrderStatus(order._id, 'approved')} className="flex-1 bg-emerald-500 text-black py-2 rounded-lg font-bold text-sm">Approve</button>}
-                                            {order.status === 'approved' && <button onClick={() => handleUpdateOrderStatus(order._id, 'confirmed')} className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-bold text-sm">Confirm</button>}
+                                            {order.status === 'approved' && (
+                                                <div className="flex-1 flex flex-col gap-2">
+                                                    <div className="flex items-center justify-between bg-black/40 rounded-lg px-3 py-2 border border-blue-500/20">
+                                                        <span className="text-[10px] font-bold text-gray-500 uppercase">Preservation</span>
+                                                        <CountdownTimer targetDate={order.preservationExpiresAt} />
+                                                    </div>
+                                                    <button onClick={() => handleUpdateOrderStatus(order._id, 'confirmed')} className="w-full bg-blue-500 text-white py-2 rounded-lg font-bold text-sm">Confirm Pickup</button>
+                                                </div>
+                                            )}
                                             {(order.status === 'pending' || order.status === 'approved') && <button onClick={() => handleUpdateOrderStatus(order._id, 'cancelled')} className="px-4 bg-white/5 border border-white/10 text-red-500 py-2 rounded-lg font-bold text-sm">Cancel</button>}
                                             {(order.status === 'confirmed' || order.status === 'cancelled') && <button onClick={() => handleDeleteOrder(order._id)} className="flex-1 bg-white/5 border border-white/10 text-gray-500 hover:text-red-500 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"><Trash2 className="w-4 h-4" /> Delete</button>}
                                         </div>
@@ -867,6 +898,51 @@ const OwnerDashboard = () => {
                             </div>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+            {/* 💬 Floating Chat Button */}
+            <div className="fixed bottom-8 right-8 z-[1000] flex flex-col items-end gap-4">
+                <AnimatePresence>
+                    {isChatListOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                            className="w-80 sm:w-96 shadow-2xl"
+                        >
+                            <ChatList
+                                role="store"
+                                onSelectChat={(room) => {
+                                    setSelectedChatRoom(room);
+                                    setIsChatListOpen(false);
+                                }}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <button
+                    onClick={() => setIsChatListOpen(!isChatListOpen)}
+                    className="w-14 h-14 bg-indigo-500 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group relative"
+                >
+                    <MessageSquare className="w-6 h-6" />
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-[#0a0a0a] hidden"></span>
+                </button>
+            </div>
+
+            {/* Chat Window Overlay */}
+            <AnimatePresence>
+                {selectedChatRoom && (
+                    <div className="fixed bottom-8 right-8 z-[2000] w-80 sm:w-[400px]">
+                        <ChatWindow
+                            roomId={selectedChatRoom._id}
+                            recipientId={selectedChatRoom.user._id}
+                            recipientName={selectedChatRoom.user.name}
+                            recipientRole="user"
+                            currentUser={currentUser}
+                            onClose={() => setSelectedChatRoom(null)}
+                        />
+                    </div>
                 )}
             </AnimatePresence>
         </div>

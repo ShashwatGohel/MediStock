@@ -5,6 +5,7 @@ import { API_URLS } from "../api";
 
 const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
     const [quantity, setQuantity] = useState(1);
+    const [preservationTime, setPreservationTime] = useState(60);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [status, setStatus] = useState("idle"); // idle, success
@@ -32,7 +33,8 @@ const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
                         quantity: parseInt(quantity) || 1,
                         price: medicine.price
                     }],
-                    totalAmount: medicine.price * (parseInt(quantity) || 1)
+                    totalAmount: medicine.price * (parseInt(quantity) || 1),
+                    preservationTime: parseInt(preservationTime) || 60
                 })
             });
 
@@ -132,6 +134,28 @@ const OrderModal = ({ isOpen, onClose, medicine, onOrderSuccess }) => {
                                                 </button>
                                             </div>
                                             <p className="text-xs text-center text-gray-500">{medicine.quantity} units available</p>
+                                        </div>
+
+                                        <div className="space-y-4 p-4 bg-emerald-500/5 rounded-xl border border-emerald-500/10">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm font-medium text-emerald-400">Preservation Time</label>
+                                                <span className="text-sm font-bold text-white bg-emerald-500/20 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                                                    {preservationTime} mins
+                                                </span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="1"
+                                                max="60"
+                                                value={preservationTime}
+                                                onChange={(e) => setPreservationTime(e.target.value)}
+                                                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                            />
+                                            <div className="flex justify-between text-[10px] text-gray-500 font-medium">
+                                                <span>1 Min</span>
+                                                <span>Restored if not confirmed</span>
+                                                <span>60 Mins</span>
+                                            </div>
                                         </div>
 
                                         <div className="pt-4 border-t border-white/5 space-y-3">

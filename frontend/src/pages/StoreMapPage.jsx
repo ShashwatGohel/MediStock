@@ -3,14 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
     Navigation, MapPin, X, ArrowLeft, Loader,
     MapPinOff, Store, Phone, Activity, ChevronRight,
-    Search, Filter
+    Search, Filter, MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { userIcon, storeIcon } from "../utils/MapMarkerIcons";
 import RangeSlider from "../components/RangeSlider";
+import ChatWindow from "../components/ChatWindow";
 import { API_URLS } from "../api";
+import socket from "../utils/socket";
 
 const RecenterMap = ({ position }) => {
     const map = useMap();
@@ -30,6 +32,27 @@ const StoreMapPage = () => {
     const [searchRadius, setSearchRadius] = useState(5);
     const [loading, setLoading] = useState(true);
     const [selectedStore, setSelectedStore] = useState(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatRoom, setChatRoom] = useState(null);
+    const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem("user")));
+
+    const handleStartChat = async (storeId) => {
+        try {
+            const response = await fetch(`${API_URLS.CHAT}/start`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${localStorage.getItem("token")}`
+                },
+                body: JSON.stringify({ storeId })
+            });
+            const data = await response.json();
+            setChatRoom(data);
+            setIsChatOpen(true);
+        } catch (error) {
+            console.error("Failed to start chat:", error);
+        }
+    };
 
     useEffect(() => {
         const savedLocation = localStorage.getItem("userLocation");
@@ -240,18 +263,43 @@ const StoreMapPage = () => {
                                         <span>{selectedStore.distance}km estimated distance</span>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-3">
                                     <button
-                                        onClick={() => navigate(`/store/${selectedStore.id}`)}
-                                        className="py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20"
+                                        onClick={() => handleStartChat(selectedStore.id)}
+                                        className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl font-bold transition-all flex items-center justify-center gap-2 mb-3"
                                     >
-                                        Visit Store
+                                        <MessageSquare className="w-4 h-4" />
+                                        Chat with Pharmacist
                                     </button>
-                                    <button className="py-3 px-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/5 transition-all">
-                                        Directions
-                                    </button>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => navigate(`/store/${selectedStore.id}`)}
+                                            className="py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/20"
+                                        >
+                                            Visit Store
+                                        </button>
+                                        <button className="py-3 px-4 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold border border-white/5 transition-all">
+                                            Directions
+                                        </button>
+                                    </div>
                                 </div>
                             </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Chat Overlay */}
+                    <AnimatePresence>
+                        {isChatOpen && chatRoom && (
+                            <div className="fixed bottom-10 right-10 z-[2000] w-[400px]">
+                                <ChatWindow
+                                    roomId={chatRoom._id}
+                                    recipientId={selectedStore.id}
+                                    recipientName={selectedStore.name}
+                                    recipientRole="store"
+                                    currentUser={currentUser}
+                                    onClose={() => setIsChatOpen(false)}
+                                />
+                            </div>
                         )}
                     </AnimatePresence>
                 </main>

@@ -41,7 +41,11 @@ const Login = () => {
           navigate("/user-dashboard");
         }
       } else {
-        setError(data.message || "Login failed");
+        if (response.status === 403) {
+          setError("Your account is not verified. Please check your email for the OTP.");
+        } else {
+          setError(data.message || "Login failed");
+        }
       }
     } catch (err) {
       console.error("Login error:", err);

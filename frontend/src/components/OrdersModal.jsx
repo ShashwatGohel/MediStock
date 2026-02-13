@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, ShoppingCart, Calendar, User, Package } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URLS } from "../api";
+import CountdownTimer from "./CountdownTimer";
 
 const OrdersModal = ({ isOpen, onClose }) => {
     const [orders, setOrders] = useState([]);
@@ -114,6 +115,12 @@ const OrdersModal = ({ isOpen, onClose }) => {
                                                         <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
                                                             {order.status.toUpperCase()}
                                                         </span>
+                                                        {order.status === 'approved' && (
+                                                            <div className="mt-2 text-xs font-bold text-blue-400 flex items-center justify-end gap-2">
+                                                                <span>ENDS IN:</span>
+                                                                <CountdownTimer targetDate={order.preservationExpiresAt} />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="space-y-1">
