@@ -342,7 +342,7 @@ export const getCategoryGlobalSearch = async (req, res) => {
 
         // Find medicines and populate store info
         let storeMedicines = await Medicine.find(medQuery)
-            .populate("storeId", "storeName storeAddress latitude longitude isStoreOpen")
+            .populate("storeId", "_id storeName storeAddress latitude longitude isStoreOpen")
             .lean();
 
         // Fallback: If no results found in this category, search globally for the name
@@ -354,7 +354,7 @@ export const getCategoryGlobalSearch = async (req, res) => {
                 quantity: { $gt: 0 }
             };
             storeMedicines = await Medicine.find(globalQuery)
-                .populate("storeId", "storeName storeAddress latitude longitude isStoreOpen")
+                .populate("storeId", "_id storeName storeAddress latitude longitude isStoreOpen")
                 .lean();
         }
 

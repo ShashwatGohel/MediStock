@@ -140,37 +140,20 @@ export const getDailyStats = async (req, res) => {
         const mongoose = await import('mongoose');
         const storeObjectId = new mongoose.default.Types.ObjectId(storeId);
 
-        // Total Sales Today (Bills + Confirmed Orders)
-        const billsSalesToday = await Bill.aggregate([
-            { $match: { storeId: storeObjectId, date: { $gte: startOfToday } } },
-            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
-        ]);
+        // Total Sales Today and Yesterday from DailyRecord
+        const todayRecord = await DailyRecord.findOne({ storeId, date: startOfToday });
+        const yesterdayRecord = await DailyRecord.findOne({ storeId, date: startOfYesterday });
 
-        const ordersSalesToday = await Order.aggregate([
-            { $match: { storeId: storeObjectId, status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: startOfToday } } },
-            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
-        ]);
-
-        const totalSalesToday = (billsSalesToday[0]?.total || 0) + (ordersSalesToday[0]?.total || 0);
-
-        // Total Sales Yesterday
-        const billsSalesYesterday = await Bill.aggregate([
-            { $match: { storeId: storeObjectId, date: { $gte: startOfYesterday, $lt: startOfToday } } },
-            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
-        ]);
-
-        const ordersSalesYesterday = await Order.aggregate([
-            { $match: { storeId: storeObjectId, status: { $in: ["approved", "confirmed"] }, createdAt: { $gte: startOfYesterday, $lt: startOfToday } } },
-            { $group: { _id: null, total: { $sum: "$totalAmount" } } }
-        ]);
-
-        const totalSalesYesterday = (billsSalesYesterday[0]?.total || 0) + (ordersSalesYesterday[0]?.total || 0);
+        const totalSalesToday = todayRecord ? todayRecord.totalSales : 0;
+        const totalSalesYesterday = yesterdayRecord ? yesterdayRecord.totalSales : 0;
 
         const salesChange = totalSalesYesterday > 0
             ? ((totalSalesToday - totalSalesYesterday) / totalSalesYesterday * 100).toFixed(0)
             : 0;
 
-        // Orders Today (Bills + All Orders created today except cancelled)
+        // Orders/Transactions Today (Bills + NEW Orders Pending/Approved/Confirmed)
+        // We keep the existing logic for "Orders Today" to show volume of requests + bills, 
+        // ensuring "Pending" orders are visible in the count.
         const billsCountToday = await Bill.countDocuments({
             storeId: storeId,
             date: { $gte: startOfToday }
@@ -208,33 +191,79 @@ export const getDailyStats = async (req, res) => {
             quantity: { $lte: 10 }
         });
 
-        // Profile Visits Today
-        const visitToday = await Visit.findOne({
-            storeId: storeId,
-            date: { $gte: startOfToday }
-        });
+        // Profile Visits (Use DailyRecord as it aggregates visits)
+        const visitsToday = todayRecord ? todayRecord.visitCount : 0;
+        const visitsYesterdayCount = yesterdayRecord ? yesterdayRecord.visitCount : 0;
 
-        const visitYesterday = await Visit.findOne({
-            storeId: storeId,
-            date: { $gte: startOfYesterday, $lt: startOfToday }
-        });
-
-        const visitsToday = visitToday?.count || 0;
-        const visitsYesterdayCount = visitYesterday?.count || 0;
         const visitsChange = visitsYesterdayCount > 0
             ? ((visitsToday - visitsYesterdayCount) / visitsYesterdayCount * 100).toFixed(0)
+            : 0;
+
+        // Performance Breakdown (Detailed stats for "Today's Performance" UI)
+
+        // 1. Items Sold (Medicines count)
+        const billsItems = await Bill.aggregate([
+            { $match: { storeId: storeObjectId, date: { $gte: startOfToday } } },
+            { $unwind: "$items" },
+            { $group: { _id: null, total: { $sum: "$items.quantity" } } }
+        ]);
+
+        const ordersItems = await Order.aggregate([
+            { $match: { storeId: storeObjectId, status: "confirmed", createdAt: { $gte: startOfToday } } },
+            { $unwind: "$items" },
+            { $group: { _id: null, total: { $sum: "$items.quantity" } } }
+        ]);
+
+        const itemsSold = (billsItems[0]?.total || 0) + (ordersItems[0]?.total || 0);
+
+        // 2. Payment Method Breakdown
+        const cashBills = await Bill.countDocuments({
+            storeId: storeId,
+            date: { $gte: startOfToday },
+            paymentMethod: "cash"
+        });
+
+        const digitalBills = await Bill.countDocuments({
+            storeId: storeId,
+            date: { $gte: startOfToday },
+            paymentMethod: { $ne: "cash" }
+        });
+
+        // Assuming all confirmed App orders are Digital/Online payments
+        const confirmedOrdersCount = await Order.countDocuments({
+            storeId: storeId,
+            status: "confirmed",
+            createdAt: { $gte: startOfToday }
+        });
+
+        const cashPayments = cashBills;
+        const digitalPayments = digitalBills + confirmedOrdersCount;
+
+        // 3. Average Order Value
+        const totalTransactions = billsCountToday + confirmedOrdersCount;
+        const averageOrderValue = totalTransactions > 0
+            ? (totalSalesToday / totalTransactions)
             : 0;
 
         res.json({
             success: true,
             stats: {
-                totalSales: totalSalesToday,
+                totalSales: totalSalesToday, // From DailyRecord (includes everything)
                 salesChange: parseInt(salesChange),
-                ordersToday: totalOrdersToday,
+                ordersToday: totalOrdersToday, // All requests (Bills + Orders)
                 ordersChange: parseInt(ordersChange),
                 lowStockCount: lowStockCount,
                 profileVisits: visitsToday,
-                visitsChange: parseInt(visitsChange)
+                visitsChange: parseInt(visitsChange),
+                // Detailed Breakdown for "Today's Performance"
+                performance: {
+                    totalSales: totalSalesToday,
+                    transactionCount: totalTransactions,
+                    averageOrderValue: Math.round(averageOrderValue),
+                    medicinesSold: itemsSold,
+                    cashPayments: cashPayments,
+                    digitalPayments: digitalPayments
+                }
             }
         });
 

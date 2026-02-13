@@ -55,6 +55,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "9:00 AM - 9:00 PM",
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    otp: {
+      type: String,
+    },
+    otpExpiresAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

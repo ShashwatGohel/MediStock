@@ -1,6 +1,7 @@
-import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { sendOTP } from "../utils/emailService.js";
+import User from "../models/User.js";
 
 // SIGNUP
 const signup = async (req, res) => {
@@ -72,14 +73,71 @@ const signup = async (req, res) => {
     // Create user
     const user = await User.create(userData);
 
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiresAt = new Date(Date.now() + 10 * 60000); // 10 minutes
+
+    user.otp = otp;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    // Send OTP
+    const emailSent = await sendOTP(user.email, otp);
+
+    if (!emailSent) {
+      // If email fails, we might still want to proceed but notify user
+      console.error("Failed to send OTP email to", user.email);
+    }
+
+    res.status(201).json({
+      message: "Signup successful. Please verify your email with the OTP sent.",
+      email: user.email,
+      requiresVerification: true
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Signup failed" });
+  }
+};
+
+// VERIFY OTP
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required" });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: "Account already verified" });
+    }
+
+    if (user.otp !== otp || user.otpExpiresAt < new Date()) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // Mark as verified
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+    await user.save();
+
+    // Generate Token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET || "default_secret",
       { expiresIn: "1d" }
     );
 
-    res.status(201).json({
-      message: "Signup successful",
+    res.status(200).json({
+      message: "Email verified successfully",
       token,
       role: user.role,
       user: {
@@ -90,7 +148,7 @@ const signup = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Signup failed" });
+    res.status(500).json({ message: "Verification failed" });
   }
 };
 
@@ -106,6 +164,10 @@ const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: "Please verify your email before logging in" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -135,4 +197,4 @@ const login = async (req, res) => {
   }
 };
 
-export { signup, login };
+export { signup, login, verifyOTP };

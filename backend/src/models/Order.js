@@ -53,6 +53,14 @@ const orderSchema = new mongoose.Schema(
         hiddenFromStore: {
             type: Boolean,
             default: false,
+        },
+        preservationTime: {
+            type: Number, // in minutes
+            default: 60,
+            max: 60
+        },
+        preservationExpiresAt: {
+            type: Date
         }
     },
     { timestamps: true }

@@ -3,6 +3,8 @@ import cors from "cors";
 import path from "path";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -12,8 +14,11 @@ import storeRoutes from "./routes/storeRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import dailyRecordRoutes from "./routes/dailyRecordRoutes.js";
 import vaultRoutes from "./routes/vaultRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import initCleanupTask from "./tasks/cleanupTask.js";
+import initPreservationCleanupTask from "./tasks/preservationCleanupTask.js";
+import socketHandlers from "./socket/socketHandlers.js";
 
 // Fix for __dirname in ES Modules
 const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +33,21 @@ connectDB();
 // Initialize Daily Cleanup Task
 initCleanupTask();
 
+// Initialize Preservation Cleanup Task
+initPreservationCleanupTask();
+
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: ["http://localhost:5173", "https://medi-stock-shashwat-gohel-s-projects.vercel.app", "https://medi-stock-theta.vercel.app"],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// Initialize Socket Handlers
+socketHandlers(io);
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -70,6 +89,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/daily-records", dailyRecordRoutes);
 app.use("/api/vault", vaultRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/chat", chatRoutes);
 
 
 
@@ -97,7 +117,7 @@ app.use((err, req, res, next) => {
 
 
 // Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 5005;
+httpServer.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });

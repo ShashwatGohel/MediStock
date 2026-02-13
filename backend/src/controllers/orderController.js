@@ -5,7 +5,7 @@ import DailyRecord from "../models/DailyRecord.js";
 
 export const createOrder = async (req, res) => {
     try {
-        const { storeId, items, totalAmount, prescriptionImage } = req.body;
+        const { storeId, items, totalAmount, prescriptionImage, preservationTime } = req.body;
         const userId = req.user.id;
 
         // Check availability and reserve logic if needed, 
@@ -18,7 +18,8 @@ export const createOrder = async (req, res) => {
             items,
             totalAmount,
             prescriptionImage,
-            status: "pending"
+            status: "pending",
+            preservationTime: Math.min(parseInt(preservationTime) || 60, 60)
         });
 
         res.status(201).json({
@@ -92,6 +93,9 @@ export const updateOrderStatus = async (req, res) => {
                 medicine.reservedQuantity += item.quantity;
                 await medicine.save();
             }
+
+            // Set preservation expiration time
+            order.preservationExpiresAt = new Date(Date.now() + order.preservationTime * 60000);
         } else if (status === "confirmed" && oldStatus === "approved") {
             // "after the owner gives or confirms the trade then the quantity will get updated in the real database"
             // (Quantity already decreased, now just clear reserved)
